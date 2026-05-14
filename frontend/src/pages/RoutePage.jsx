@@ -1,321 +1,571 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, ChevronDown, Map, Navigation, Clock, Fuel, Euro } from 'lucide-react'
+import { Search, ChevronDown, Map, Navigation, Clock, Fuel, Euro, Loader2, MapPin, Zap, AlertCircle } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { ROUTE_TEMPLATES, EUROPE_STARTS, TURKEY_DESTINATIONS } from '../config/routes'
 
-const VIGNETTES = [
-  { country: '🇦🇹 Österreich', price: '15,40 €', days: '10 Tage', color: '#e8192c' },
-  { country: '🇭🇺 Ungarn', price: '10,00 €', days: '10 Tage', color: '#22c55e' },
-  { country: '🇸🇮 Slowenien', price: '16,00 €', days: '7 Tage', color: '#3b82f6' },
-  { country: '🇷🇸 Serbien', price: 'Gratis', days: 'PKW frei', color: '#f59e0b' },
-  { country: '🇧🇬 Bulgarien', price: '10,50 €', days: '7 Tage', color: '#7c3aed' },
+const API = import.meta.env.VITE_API_BASE_URL || 'https://sila-yolu-ai-production.up.railway.app'
+
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org'
+
+const TR_CITIES = [
+  'Istanbul', 'Ankara', 'Izmir', 'Bursa', 'Antalya', 'Konya', 'Adana',
+  'Gaziantep', 'Trabzon', 'Samsun', 'Kayseri', 'Sivas', 'Erzurum',
+  'Diyarbakir', 'Bodrum', 'Kusadasi', 'Marmaris', 'Cesme', 'Fethiye',
 ]
 
-function GoogleMapEmbed({ origin, destination }) {
-  const src = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&language=de`
-  // Fallback to directions URL if no API key
-  const fallbackUrl = `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(destination)}`
-
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ height: 280 }}>
-      <iframe
-        title="Route"
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        src={src}
-        onError={(e) => { e.target.src = '' }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center rounded-2xl"
-        style={{ background: 'rgba(0,0,0,0.05)' }}>
-      </div>
-    </div>
-  )
-}
-
-function OpenStreetMapEmbed({ origin, destination }) {
-  // Use OpenStreetMap/OSRM — no API key needed
-  const bbox = '8,42,32,52'
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=48.1351,11.5820`
-
-  return (
-    <div className="rounded-2xl overflow-hidden relative" style={{ height: 260 }}>
-      <iframe
-        title="Karte"
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        src={src}
-        loading="lazy"
-      />
-      {/* Open in Google Maps button */}
-      <div className="absolute bottom-3 right-3">
-        <a
-          href={`https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(destination)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white"
-          style={{ background: '#e8192c', boxShadow: '0 2px 12px rgba(232,25,44,0.4)' }}>
-          <Map size={12} /> In Google Maps öffnen
-        </a>
-      </div>
-    </div>
-  )
-}
 
 export default function RoutePage() {
-  const { isDark, setCurrentRoute } = useStore()
-  const [start, setStart] = useState('München')
-  const [dest, setDest] = useState('Istanbul')
-  const [fuel, setFuel] = useState('diesel')
-  const [consumption, setConsumption] = useState(8)
-  const [fuelPrice, setFuelPrice] = useState(1.65)
-  const [showOptions, setShowOptions] = useState(false)
-  const [avoidFerry, setAvoidFerry] = useState(false)
-  const [avoidToll, setAvoidToll] = useState(false)
-  const [selectedRoute, setSelectedRoute] = useState(null)
-  const [calculated, setCalculated] = useState(false)
-  const [showMap, setShowMap] = useState(false)
-  const [activeView, setActiveView] = useState('route') // 'route' | 'map' | 'vignetten'
+  const { setCurrentRoute, routeSettings, setRouteSettings, routeResult, setRouteResult } = useStore()
+  const { start, dest, fuel, consumption, fuelPrice, avoidToll, selectedRouteKey } = routeSettings
 
-  const bg = isDark ? '#0d0d0d' : '#ffffff'
-  const cardBg = isDark ? '#1a1a1a' : '#ffffff'
-  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
-  const textMuted = isDark ? '#888' : '#64748b'
-  const textMain = isDark ? '#f5f5f5' : '#0f172a'
+  const [startSugg, setStartSugg] = useState([])
+  const [destSugg, setDestSugg] = useState([])
+  const [showStartSugg, setShowStartSugg] = useState(false)
+  const [showDestSugg, setShowDestSugg] = useState(false)
+  const [gpsLoading, setGpsLoading] = useState(false)
+  const [calculating, setCalculating] = useState(false)
+  const [result, setResult] = useState(routeResult?.routes ? routeResult : null)
+  const [error, setError] = useState(null)
+  const [selectedKey, setSelectedKey] = useState(selectedRouteKey || 'austria_hungary')
 
+  const startRef = useRef(null)
+  const destRef = useRef(null)
+  const startDebounce = useRef(null)
+  const destDebounce = useRef(null)
+
+  const glass = {
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+  }
+  const glassStrong = {
+    background: 'rgba(255,255,255,0.07)',
+    border: '1px solid rgba(255,255,255,0.14)',
+    backdropFilter: 'blur(24px) saturate(200%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
+  }
+  const cardBg = 'rgba(255,255,255,0.04)'
+  const border = 'rgba(255,255,255,0.1)'
+  const textMuted = 'rgba(255,255,255,0.4)'
+  const textMain = '#f5f5f5'
   const inputStyle = {
-    background: isDark ? '#1a1a1a' : '#f7f8fc',
-    border: `1px solid ${border}`,
-    borderRadius: 16,
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 14,
     color: textMain,
-    padding: '12px 16px',
+    padding: '13px 16px',
     fontSize: 14,
     width: '100%',
     outline: 'none',
+    backdropFilter: 'blur(8px)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
   }
 
-  const routes = Object.values(ROUTE_TEMPLATES)
-  const totalKm = selectedRoute?.distance || 2150
-  const fuelCost = ((totalKm / 100) * consumption * fuelPrice).toFixed(0)
-  const hours = selectedRoute?.duration || 22
+  useEffect(() => {
+    function close(e) {
+      if (startRef.current && !startRef.current.contains(e.target)) setShowStartSugg(false)
+      if (destRef.current && !destRef.current.contains(e.target)) setShowDestSugg(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
 
-  function calculate() {
-    setCalculated(true)
-    setSelectedRoute(routes[0])
-    setCurrentRoute(routes[0])
+  function searchStart(val) {
+    setRouteSettings({ start: val })
+    setResult(null)
+    if (startDebounce.current) clearTimeout(startDebounce.current)
+    if (val.length < 2) { setStartSugg([]); setShowStartSugg(false); return }
+    startDebounce.current = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `${NOMINATIM_URL}/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'Accept-Language': 'de' } }
+        )
+        const data = await r.json()
+        setStartSugg(data)
+        setShowStartSugg(data.length > 0)
+      } catch { setStartSugg([]) }
+    }, 300)
   }
+
+  function searchDest(val) {
+    setRouteSettings({ dest: val })
+    setResult(null)
+    if (destDebounce.current) clearTimeout(destDebounce.current)
+    if (val.length < 2) { setDestSugg([]); setShowDestSugg(false); return }
+    destDebounce.current = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `${NOMINATIM_URL}/search?q=${encodeURIComponent(val)}&format=json&limit=8&addressdetails=1`,
+          { headers: { 'Accept-Language': 'de', 'User-Agent': 'SilaYoluApp/1.0' } }
+        )
+        const data = await r.json()
+        const items = data
+          .map(d => {
+            const name = d.address?.village || d.address?.town || d.address?.city || d.address?.county || d.display_name.split(',')[0]
+            const state = d.address?.state || ''
+            const country = d.address?.country || ''
+            return { displayName: name + (state ? `, ${state}` : ''), shortName: name, country, flag: d.address?.country_code }
+          })
+          .filter((item, idx, arr) => arr.findIndex(x => x.shortName === item.shortName) === idx)
+        setDestSugg(items)
+        setShowDestSugg(items.length > 0)
+      } catch { setDestSugg([]); setShowDestSugg(false) }
+    }, 280)
+  }
+
+  function selectStart(item) {
+    const name = item.address?.village || item.address?.town || item.address?.city || item.display_name.split(',')[0]
+    const country = item.address?.country || ''
+    setRouteSettings({ start: name + (country ? `, ${country}` : '') })
+    setShowStartSugg(false)
+    setResult(null)
+  }
+
+  function selectDest(item) {
+    setRouteSettings({ dest: item.displayName || item.shortName })
+    setShowDestSugg(false)
+    setResult(null)
+  }
+
+  async function handleGps() {
+    if (!navigator.geolocation) return
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const r = await fetch(`${NOMINATIM_URL}/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`, { headers: { 'Accept-Language': 'de' } })
+        const data = await r.json()
+        const city = data.address?.city || data.address?.town || data.address?.village || data.display_name.split(',')[0]
+        setRouteSettings({ start: city })
+      } catch {}
+      setGpsLoading(false)
+    }, () => setGpsLoading(false), { timeout: 8000 })
+  }
+
+  async function calculate() {
+    if (!start.trim() || !dest.trim()) {
+      setError('Bitte Start und Ziel eingeben.')
+      return
+    }
+    setCalculating(true)
+    setError(null)
+    try {
+      const r = await fetch(`${API}/api/route/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, dest, consumption, fuelPrice, avoidToll }),
+      })
+      const data = await r.json()
+      if (!r.ok || !data.routes) throw new Error(data.error || `HTTP ${r.status}`)
+      setResult(data)
+      setRouteResult(data)
+      const best = data.routes.find(r => r.key === selectedKey) || data.routes[0]
+      fetchAiTips(best)
+      setRouteSettings({ selectedRouteKey: best.key })
+      setCurrentRoute({ ...best, start, dest })
+    } catch (e) {
+      setError(`Fehler: ${e.message}`)
+    }
+    setCalculating(false)
+  }
+
+  const [aiTips, setAiTips] = useState(null)
+  const [tipsLoading, setTipsLoading] = useState(false)
+
+  async function fetchAiTips(route) {
+    if (!route) return
+    setTipsLoading(true)
+    setAiTips(null)
+    try {
+      const r = await fetch(`${API}/api/route/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, dest, routeKey: route.key, consumption, fuelPrice, avoidToll }),
+      })
+      const data = await r.json()
+      setAiTips(data.aiTips)
+    } catch {}
+    setTipsLoading(false)
+  }
+
+  function selectRoute(key) {
+    setSelectedKey(key)
+    setRouteSettings({ selectedRouteKey: key })
+    if (result) {
+      const r = result.routes.find(r => r.key === key)
+      setCurrentRoute({ ...r, start, dest })
+      fetchAiTips(r)
+    }
+  }
+
+  const selectedResult = result?.routes?.find(r => r.key === selectedKey)
 
   return (
-    <div className="page-container" style={{ background: bg }}>
+    <div className="page-container" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d0d18 40%, #080810 100%)' }}>
       <div className="px-4 pt-6 pb-4">
         <h1 className="text-2xl font-black mb-1" style={{ color: textMain }}>Route berechnen</h1>
-        <p className="text-sm mb-4" style={{ color: textMuted }}>Von Europa bis zur Türkei</p>
+        <p className="text-sm mb-4" style={{ color: textMuted }}>Von Europa bis zur Türkei — mit KI</p>
 
-        {/* View Tabs */}
-        <div className="flex gap-1.5 mb-4 p-1 rounded-2xl" style={{ background: isDark ? '#1a1a1a' : '#f7f8fc', border: `1px solid ${border}` }}>
-          {[['route', '🗺️ Route'], ['map', '📍 Karte'], ['vignetten', '🪟 Vignetten']].map(([id, label]) => (
-            <button key={id} onClick={() => setActiveView(id)}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{ background: activeView === id ? 'linear-gradient(135deg, #e8192c, #c0111f)' : 'transparent', color: activeView === id ? 'white' : textMuted }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          {/* Form card */}
+          <div className="rounded-3xl p-4 mb-4" style={glassStrong}>
 
-        {/* ROUTE TAB */}
-        {activeView === 'route' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {/* Input Form */}
-            <div className="rounded-2xl p-4 mb-4" style={{ background: cardBg, border: `1px solid ${border}` }}>
-              <div className="mb-3">
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: textMuted }}>STARTORT</label>
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: textMuted }} />
-                  <input value={start} onChange={e => setStart(e.target.value)}
-                    placeholder="z.B. München, Paris..."
-                    style={{ ...inputStyle, paddingLeft: 36 }} list="starts" />
-                  <datalist id="starts">
-                    {EUROPE_STARTS.map(s => <option key={s} value={s} />)}
-                  </datalist>
-                </div>
+            {/* Start */}
+            <div className="mb-3" ref={startRef}>
+              <label className="text-xs font-bold mb-2 block tracking-widest" style={{ color: textMuted }}>STARTORT</label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
+                <input value={start} onChange={e => searchStart(e.target.value)}
+                  onFocus={() => startSugg.length > 0 && setShowStartSugg(true)}
+                  placeholder="z.B. München, Berlin, Paris..."
+                  style={{ ...inputStyle, paddingLeft: 36, paddingRight: 44 }}
+                  autoComplete="off" />
+                <button onClick={handleGps} disabled={gpsLoading}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.07)', border: `1px solid ${border}` }}>
+                  {gpsLoading
+                    ? <Loader2 size={14} style={{ color: textMain, animation: 'spin 1s linear infinite' }} />
+                    : <Navigation size={14} style={{ color: textMain }} />}
+                </button>
+                <AnimatePresence>
+                  {showStartSugg && startSugg.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      className="absolute top-full left-0 right-0 z-50 rounded-2xl overflow-hidden mt-1"
+                      style={{ background: '#141420', border: `1px solid ${border}`, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', backdropFilter: 'blur(16px)' }}>
+                      {startSugg.map((item, i) => {
+                        const city = item.address?.city || item.address?.town || item.address?.village || item.display_name.split(',')[0]
+                        return (
+                          <button key={item.place_id} onMouseDown={() => selectStart(item)}
+                            className="w-full text-left px-4 py-3 flex items-center gap-2.5"
+                            style={{ borderBottom: i < startSugg.length - 1 ? `1px solid ${border}` : 'none', background: 'transparent' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <MapPin size={13} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                            <div>
+                              <div className="text-sm font-medium" style={{ color: textMain }}>{city}</div>
+                              <div className="text-xs" style={{ color: textMuted }}>{item.address?.country}</div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+            </div>
 
-              <div className="mb-3">
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: textMuted }}>ZIELORT TÜRKEI</label>
+            {/* Dest */}
+            <div className="mb-3" ref={destRef}>
+              <label className="text-xs font-bold mb-2 block tracking-widest" style={{ color: textMuted }}>ZIELORT</label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
+                <input value={dest} onChange={e => searchDest(e.target.value)}
+                  onFocus={() => searchDest(dest)}
+                  placeholder="z.B. Istanbul, Ankara, Antalya..."
+                  style={{ ...inputStyle, paddingLeft: 36 }}
+                  autoComplete="off" />
+                <AnimatePresence>
+                  {showDestSugg && destSugg.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      className="absolute top-full left-0 right-0 z-50 rounded-2xl overflow-hidden mt-1"
+                      style={{ background: '#141420', border: `1px solid ${border}`, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', backdropFilter: 'blur(16px)' }}>
+                      {destSugg.map((item, i) => (
+                        <button key={i} onMouseDown={() => selectDest(item)}
+                          className="w-full text-left px-4 py-3 flex items-center gap-2.5"
+                          style={{ borderBottom: i < destSugg.length - 1 ? `1px solid ${border}` : 'none', background: 'transparent' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <MapPin size={13} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                          <div>
+                            <div className="text-sm font-medium" style={{ color: textMain }}>{item.shortName}</div>
+                            {item.country && <div className="text-xs" style={{ color: textMuted }}>{item.country}</div>}
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Fuel & Consumption */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-bold mb-2 block tracking-widest" style={{ color: textMuted }}>KRAFTSTOFF</label>
                 <div className="relative">
-                  <select value={dest} onChange={e => setDest(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
-                    {TURKEY_DESTINATIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  <select value={fuel} onChange={e => setRouteSettings({ fuel: e.target.value })}
+                    style={{ ...inputStyle, appearance: 'none', paddingRight: 36 }}>
+                    <option value="diesel">Diesel</option>
+                    <option value="benzin">Benzin</option>
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: textMuted }} />
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: textMuted }}>KRAFTSTOFF</label>
-                  <select value={fuel} onChange={e => setFuel(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
-                    <option value="diesel">Diesel</option>
-                    <option value="benzin">Benzin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: textMuted }}>VERBRAUCH L/100km</label>
-                  <input type="number" value={consumption} onChange={e => setConsumption(+e.target.value)}
-                    min={4} max={20} step={0.5} style={inputStyle} />
-                </div>
+              <div>
+                <label className="text-xs font-bold mb-2 block tracking-widest" style={{ color: textMuted }}>L/100KM</label>
+                <input type="number" value={consumption}
+                  onChange={e => setRouteSettings({ consumption: +e.target.value })}
+                  min={4} max={20} step={0.5} style={inputStyle} />
               </div>
-
-              <div className="mb-4">
-                <label className="text-xs font-semibold mb-1.5 flex justify-between" style={{ color: textMuted }}>
-                  <span>KRAFTSTOFFPREIS</span>
-                  <span style={{ color: '#e8192c' }}>{fuelPrice.toFixed(2)} €/L</span>
-                </label>
-                <input type="range" min={1.2} max={2.5} step={0.05} value={fuelPrice}
-                  onChange={e => setFuelPrice(+e.target.value)}
-                  className="w-full" style={{ accentColor: '#e8192c' }} />
-              </div>
-
-              <button onClick={() => setShowOptions(!showOptions)}
-                className="flex items-center gap-1 text-xs mb-3" style={{ color: '#e8192c', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <ChevronDown size={12} style={{ transform: showOptions ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                Erweiterte Optionen
-              </button>
-
-              <AnimatePresence>
-                {showOptions && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mb-3">
-                    <div className="flex flex-col gap-2">
-                      {[[avoidFerry, setAvoidFerry, 'Fähre vermeiden'], [avoidToll, setAvoidToll, 'Maut vermeiden']].map(([val, setter, label], i) => (
-                        <label key={i} className="flex items-center gap-2 cursor-pointer">
-                          <div onClick={() => setter(!val)}
-                            className="w-5 h-5 rounded-md flex items-center justify-center"
-                            style={{ background: val ? '#e8192c' : isDark ? '#1a1a1a' : '#f7f8fc', border: `1px solid ${val ? '#e8192c' : border}` }}>
-                            {val && <div className="w-2.5 h-2.5 rounded-sm bg-white" />}
-                          </div>
-                          <span className="text-sm" style={{ color: textMain }}>{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <motion.button whileTap={{ scale: 0.97 }} onClick={calculate}
-                className="w-full py-3.5 rounded-2xl font-bold text-white text-base"
-                style={{ background: 'linear-gradient(135deg, #e8192c, #c0111f)', boxShadow: '0 4px 20px rgba(232,25,44,0.35)' }}>
-                🗺️ Route berechnen
-              </motion.button>
             </div>
 
-            {/* Results */}
-            <AnimatePresence>
-              {calculated && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                  {/* Cost Summary */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
+            {/* Fuel Price */}
+            <div className="mb-4">
+              <label className="text-xs font-bold mb-2 flex justify-between tracking-widest" style={{ color: textMuted }}>
+                <span>KRAFTSTOFFPREIS</span>
+                <span style={{ color: textMain, fontWeight: 800 }}>{fuelPrice.toFixed(2)} €/L</span>
+              </label>
+              <input type="range" min={1.0} max={2.5} step={0.05} value={fuelPrice}
+                onChange={e => setRouteSettings({ fuelPrice: +e.target.value })}
+                className="w-full" style={{ accentColor: 'rgba(255,255,255,0.6)' }} />
+              <div className="flex justify-between text-xs mt-1" style={{ color: textMuted }}>
+                <span>1.00 €</span><span>2.50 €</span>
+              </div>
+            </div>
+
+            {/* Maut toggle */}
+            <label className="flex items-center gap-2 cursor-pointer mb-4">
+              <div onClick={() => setRouteSettings({ avoidToll: !avoidToll })}
+                className="w-5 h-5 rounded-md flex items-center justify-center"
+                style={{ background: avoidToll ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)', border: `1px solid ${avoidToll ? 'rgba(255,255,255,0.3)' : border}` }}>
+                {avoidToll && <div className="w-2.5 h-2.5 rounded-sm bg-white" />}
+              </div>
+              <span className="text-sm" style={{ color: textMain }}>Maut vermeiden</span>
+            </label>
+
+            {error && (
+              <div className="flex items-center gap-2 mb-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${border}` }}>
+                <AlertCircle size={14} style={{ color: textMuted }} />
+                <span className="text-xs" style={{ color: textMuted }}>{error}</span>
+              </div>
+            )}
+
+            <motion.button whileTap={{ scale: 0.97 }} onClick={calculate} disabled={calculating}
+              className="w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                color: textMain,
+                border: `1px solid rgba(255,255,255,0.18)`,
+                backdropFilter: 'blur(8px)',
+                opacity: calculating ? 0.6 : 1,
+              }}>
+              {calculating
+                ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Berechne...</>
+                : <><Zap size={16} /> Route berechnen</>}
+            </motion.button>
+          </div>
+
+          {/* Results */}
+          <AnimatePresence>
+            {result && (
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+
+                {/* Summary cards */}
+                {selectedResult && (
+                  <div className="grid grid-cols-2 gap-2 mb-4">
                     {[
-                      { icon: Navigation, label: 'Distanz', value: `${totalKm} km`, color: '#e8192c' },
-                      { icon: Clock, label: 'Fahrzeit', value: `${hours}h`, color: '#f59e0b' },
-                      { icon: Euro, label: 'Spritkosten', value: `${fuelCost}€`, color: '#22c55e' },
+                      { icon: Navigation, label: 'Distanz', value: `${selectedResult.km.toLocaleString()} km` },
+                      { icon: Clock, label: 'Fahrzeit', value: `~${selectedResult.hours}h` },
+                      { icon: Fuel, label: 'Spritkosten', value: `${selectedResult.fuelCost} €` },
+                      { icon: Euro, label: 'Gesamt', value: `${selectedResult.total} €` },
                     ].map((s, i) => (
-                      <div key={i} className="rounded-2xl p-3 text-center"
-                        style={{ background: cardBg, border: `1px solid ${border}` }}>
-                        <s.icon size={16} className="mx-auto mb-1" style={{ color: s.color }} />
-                        <div className="font-bold text-sm" style={{ color: s.color }}>{s.value}</div>
-                        <div className="text-xs" style={{ color: textMuted }}>{s.label}</div>
+                      <div key={i} className="rounded-2xl p-3 flex items-center gap-2.5"
+                        style={glass}>
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(255,255,255,0.07)' }}>
+                          <s.icon size={15} style={{ color: 'rgba(255,255,255,0.6)' }} />
+                        </div>
+                        <div>
+                          <div className="font-black text-sm" style={{ color: textMain }}>{s.value}</div>
+                          <div className="text-xs" style={{ color: textMuted }}>{s.label}</div>
+                        </div>
                       </div>
                     ))}
                   </div>
+                )}
 
-                  {/* Route Options */}
-                  <h2 className="text-sm font-bold mb-3" style={{ color: textMain }}>
-                    {start} → {dest}
-                  </h2>
-                  <div className="flex flex-col gap-3 mb-4">
-                    {routes.map((r, i) => (
-                      <motion.div key={r.name} whileTap={{ scale: 0.98 }}
-                        onClick={() => { setSelectedRoute(r); setCurrentRoute(r) }}
-                        className="rounded-2xl p-4 cursor-pointer transition-all"
-                        style={{
-                          background: selectedRoute?.name === r.name ? 'rgba(232,25,44,0.08)' : cardBg,
-                          border: `1px solid ${selectedRoute?.name === r.name ? '#e8192c' : border}`,
-                        }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="font-semibold text-sm" style={{ color: textMain }}>{r.name}</div>
-                          {i === 0 && <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{ background: 'rgba(232,25,44,0.1)', color: '#e8192c' }}>Empfohlen</span>}
+                {/* Fees */}
+                {selectedResult?.fees && (
+                  <div className="rounded-2xl p-4 mb-4" style={glass}>
+                    <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>GEBÜHREN & VIGNETTEN</div>
+                    {selectedResult.fees.filter(f => f.required || f.cost > 0).map((fee, i, arr) => {
+                      const icon = fee.type === 'vignette' ? '🪟' : fee.type === 'toll' ? '🛣️' : 'ℹ️'
+                      return (
+                        <div key={i} className="py-2.5" style={{ borderBottom: i < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{icon}</span>
+                              <div>
+                                <span className="text-xs" style={{ color: textMuted }}>{fee.country}</span>
+                                <div className="text-sm font-semibold" style={{ color: textMain }}>{fee.name}</div>
+                              </div>
+                            </div>
+                            <span className="text-sm font-black ml-2 shrink-0" style={{ color: fee.cost > 0 ? textMain : textMuted }}>
+                              {fee.cost > 0 ? `${fee.cost.toFixed(2)} €` : 'Gratis'}
+                            </span>
+                          </div>
+                          <div className="text-xs ml-7" style={{ color: textMuted }}>{fee.note}</div>
                         </div>
-                        <div className="text-xs" style={{ color: textMuted }}>
-                          {r.stops?.join(' → ') || 'DE → AT → HU → RS → BG → TR'}
+                      )
+                    })}
+                    <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${border}` }}>
+                      {[
+                        { label: `Sprit (${Math.round((selectedResult.km / 100) * consumption)}L × ${fuelPrice.toFixed(2)}€)`, val: `${selectedResult.fuelCost} €` },
+                        { label: 'Gesamt Hinfahrt', val: `${selectedResult.total} €`, bold: true },
+                        { label: 'Hin- & Rückfahrt ca.', val: `${selectedResult.total * 2} €`, bold: true },
+                      ].map((row, i) => (
+                        <div key={i} className="flex justify-between py-1.5">
+                          <span className="text-sm" style={{ color: row.bold ? textMain : textMuted, fontWeight: row.bold ? 700 : 400 }}>{row.label}</span>
+                          <span className="text-sm font-black" style={{ color: textMain }}>{row.val}</span>
                         </div>
-                      </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tank stops — route-specific from backend */}
+                {selectedResult?.tankStops?.length > 0 && (
+                  <div className="rounded-2xl p-4 mb-4" style={glass}>
+                    <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>TANKSTOPPS</div>
+                    {selectedResult.tankStops.map((s, i, arr) => (
+                      <div key={i} className="flex items-start gap-3 py-2.5"
+                        style={{ borderBottom: i < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
+                        <span className="text-lg mt-0.5">{s.flag}</span>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-semibold" style={{ color: textMain }}>{s.city}</span>
+                            <span className="text-xs" style={{ color: textMuted }}>~{s.km.toLocaleString()} km</span>
+                          </div>
+                          <div className="text-xs mt-0.5" style={{ color: s.tip ? '#4ade80' : textMuted }}>{s.note}</div>
+                        </div>
+                      </div>
                     ))}
                   </div>
+                )}
 
-                  {/* Google Maps Link */}
-                  <a href={`https://www.google.com/maps/dir/${encodeURIComponent(start)}/${encodeURIComponent('Budapest')}/${encodeURIComponent('Belgrade')}/${encodeURIComponent('Sofia')}/${encodeURIComponent(dest + ', Türkei')}`}
+                {/* Speed limits */}
+                {selectedResult?.speedLimits?.length > 0 && (
+                  <div className="rounded-2xl p-4 mb-4" style={glass}>
+                    <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>TEMPOLIMITS</div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 280 }}>
+                        <thead>
+                          <tr>
+                            {['Land', 'Autobahn', 'Landstr.', 'Richtg.'].map(h => (
+                              <th key={h} style={{ textAlign: h === 'Land' ? 'left' : 'center', fontSize: 9, fontWeight: 700, color: textMuted, paddingBottom: 8, borderBottom: `1px solid ${border}`, paddingRight: h === 'Land' ? 8 : 0, letterSpacing: '0.05em' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedResult.speedLimits.map((s, i, arr) => (
+                            <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid rgba(255,255,255,0.05)` : 'none' }}>
+                              <td style={{ paddingTop: 8, paddingBottom: 8, paddingRight: 8 }}>
+                                <div className="flex items-center gap-1">
+                                  <span style={{ fontSize: 13 }}>{s.flag}</span>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: textMain }}>{s.country}</span>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#60a5fa', paddingTop: 8, paddingBottom: 8 }}>{s.autobahn}</td>
+                              <td style={{ textAlign: 'center', fontSize: 11, color: textMuted, paddingTop: 8, paddingBottom: 8 }}>{s.land}</td>
+                              <td style={{ textAlign: 'center', fontSize: 11, color: 'rgba(251,191,36,0.8)', paddingTop: 8, paddingBottom: 8 }}>{s.ort || '50'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex flex-wrap gap-3 mt-3 pt-2.5" style={{ borderTop: `1px solid ${border}` }}>
+                      {[['#60a5fa','Autobahn'],['rgba(255,255,255,0.4)','Landstraße'],['rgba(251,191,36,0.8)','Ortschaft']].map(([c,l]) => (
+                        <div key={l} className="flex items-center gap-1">
+                          <div style={{ width: 6, height: 6, borderRadius: 3, background: c }} />
+                          <span style={{ fontSize: 9, color: textMuted }}>{l}</span>
+                        </div>
+                      ))}
+                      <span style={{ fontSize: 9, color: textMuted }}>* Richtgeschwindigkeit (DE = kein festes Limit)</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reise-Tipps — no AI label */}
+                {(aiTips || tipsLoading) && (
+                  <div className="rounded-2xl p-4 mb-4" style={glass}>
+                    <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>REISETIPPS</div>
+                    {tipsLoading
+                      ? <div className="flex items-center gap-2 text-xs" style={{ color: textMuted }}><Zap size={12} style={{ animation: 'pulse 1s infinite' }} /> Tipps werden geladen...</div>
+                      : aiTips?.map((tip, i) => (
+                        <div key={i} className="flex gap-2.5 mb-3 last:mb-0">
+                          <span className="text-xs font-black mt-0.5 w-4 shrink-0 text-center" style={{ color: textMuted }}>{i + 1}</span>
+                          <span className="text-sm leading-relaxed" style={{ color: textMain }}>{tip}</span>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+
+                {/* Route comparison */}
+                <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>ROUTENVERGLEICH</div>
+                <div className="flex flex-col gap-3 mb-4">
+                  {result.routes.map((r) => {
+                    const isSelected = selectedKey === r.key
+                    return (
+                      <motion.div key={r.key} whileTap={{ scale: 0.98 }} onClick={() => selectRoute(r.key)}
+                        className="rounded-2xl p-4 cursor-pointer"
+                        style={isSelected ? {
+                          background: 'rgba(255,255,255,0.1)',
+                          border: '1px solid rgba(255,255,255,0.22)',
+                          backdropFilter: 'blur(24px) saturate(200%)',
+                          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                          boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                        } : glass}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-sm" style={{ color: textMain }}>{r.name}</span>
+                          {r.recommended && (
+                            <span className="text-xs px-2 py-1 rounded-full font-bold"
+                              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>✓ Empfohlen</span>
+                          )}
+                        </div>
+                        <div className="flex items-center flex-wrap gap-0.5 text-base mb-2">
+                          {r.flags.map((f, fi) => (
+                            <span key={fi}>{f}{fi < r.flags.length - 1 && <span className="text-xs mx-0.5" style={{ color: textMuted }}>›</span>}</span>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[
+                            { label: 'km', val: r.km.toLocaleString() },
+                            { label: 'Std', val: `~${r.hours}h` },
+                            { label: 'Sprit', val: `${r.fuelCost}€` },
+                            { label: 'Gesamt', val: `${r.total}€` },
+                          ].map((s, si) => (
+                            <div key={si} className="rounded-xl p-1.5 text-center"
+                              style={{ background: 'rgba(255,255,255,0.05)' }}>
+                              <div className="font-black text-xs" style={{ color: textMain }}>{s.val}</div>
+                              <div className="text-[9px] mt-0.5" style={{ color: textMuted }}>{s.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-xs mt-2" style={{ color: textMuted }}>
+                          🪟 Vignetten {r.vignetteCost}€{!avoidToll && r.tollCost > 0 ? ` · 🛣️ Maut ${r.tollCost}€` : ''}
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+
+                {/* Google Maps */}
+                {selectedResult && (
+                  <a href={`https://www.google.com/maps/dir/${encodeURIComponent(start)}/${selectedResult.countries.slice(1, -1).map(c => encodeURIComponent(c)).join('/')}/${encodeURIComponent(dest + ', Türkei')}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-white text-sm"
-                    style={{ background: 'linear-gradient(135deg, #4285f4, #1a73e8)', boxShadow: '0 4px 16px rgba(66,133,244,0.35)', textDecoration: 'none' }}>
+                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm"
+                    style={{ background: 'rgba(255,255,255,0.07)', color: textMain, border: `1px solid ${border}`, textDecoration: 'none' }}>
                     <Map size={16} /> In Google Maps öffnen
                   </a>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-
-        {/* MAP TAB */}
-        {activeView === 'map' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="mb-3 text-sm" style={{ color: textMuted }}>
-              Route: <span style={{ color: textMain, fontWeight: 600 }}>{start} → {dest}</span>
-            </div>
-            <OpenStreetMapEmbed origin={start} destination={dest} />
-            <div className="mt-4 rounded-2xl p-4" style={{ background: cardBg, border: `1px solid ${border}` }}>
-              <div className="font-semibold text-sm mb-2" style={{ color: textMain }}>🗺️ Schnellroute</div>
-              {['🇩🇪 Deutschland', '🇦🇹 Österreich', '🇭🇺 Ungarn', '🇷🇸 Serbien', '🇧🇬 Bulgarien', '🇹🇷 Türkei'].map((c, i, arr) => (
-                <div key={c} className="flex items-center gap-2 py-1.5">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#e8192c' }} />
-                  <span className="text-sm" style={{ color: textMain }}>{c}</span>
-                  {i < arr.length - 1 && <div className="flex-1 border-l-2 border-dashed ml-1 h-4" style={{ borderColor: isDark ? '#333' : '#e5e7eb' }} />}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* VIGNETTEN TAB */}
-        {activeView === 'vignetten' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <p className="text-sm mb-4" style={{ color: textMuted }}>Pflichtgebühren auf der Standardroute</p>
-            <div className="flex flex-col gap-3">
-              {VIGNETTES.map((v, i) => (
-                <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
-                  className="rounded-2xl p-4 flex items-center justify-between"
-                  style={{ background: cardBg, border: `1px solid ${border}` }}>
-                  <div>
-                    <div className="font-semibold text-sm" style={{ color: textMain }}>{v.country}</div>
-                    <div className="text-xs mt-0.5" style={{ color: textMuted }}>{v.days}</div>
-                  </div>
-                  <div className="font-black text-base" style={{ color: v.color }}>{v.price}</div>
-                </motion.div>
-              ))}
-              <div className="rounded-2xl p-4 mt-1"
-                style={{ background: 'rgba(232,25,44,0.08)', border: '1px solid rgba(232,25,44,0.2)' }}>
-                <div className="font-bold text-sm mb-0.5" style={{ color: '#e8192c' }}>
-                  Gesamtkosten Vignetten: ~52 €
-                </div>
-                <div className="text-xs" style={{ color: textMuted }}>Ohne Türkei-Maut (ggf. HGS/OGS System)</div>
-              </div>
-            </div>
-          </motion.div>
-        )}
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   )

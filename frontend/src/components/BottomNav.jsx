@@ -6,23 +6,23 @@ const tabs = [
   { id: 'home', icon: Home, label: 'Home' },
   { id: 'route', icon: Map, label: 'Route' },
   { id: 'border', icon: AlertTriangle, label: 'Grenze' },
-  { id: 'fuel', icon: Fuel, label: 'Tanken' },
-  { id: 'ai', icon: Bot, label: 'KI' },
+  { id: 'ai', icon: Bot, label: 'Assistent' },
   { id: 'community', icon: Users, label: 'Community' },
   { id: 'profile', icon: User, label: 'Profil' },
 ]
 
 export default function BottomNav() {
-  const { activeTab, setActiveTab, isDark } = useStore()
+  const { activeTab, setActiveTab } = useStore()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50"
+    <nav className="relative z-50 flex-shrink-0"
       style={{
-        maxWidth: 480, margin: '0 auto',
-        background: isDark ? 'rgba(20,20,20,0.97)' : 'rgba(255,255,255,0.97)',
-        backdropFilter: 'blur(20px)',
-        borderTop: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)',
-        left: '50%', transform: 'translateX(-50%)', width: '100%',
+        height: 'var(--nav-h)',
+        background: 'rgba(6,6,16,0.95)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 -4px 24px rgba(0,0,0,0.5)',
       }}>
       <div className="flex items-center justify-around px-1 py-2">
         {tabs.map((tab) => {
@@ -31,19 +31,23 @@ export default function BottomNav() {
           return (
             <motion.button key={tab.id} whileTap={{ scale: 0.82 }}
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl relative transition-all"
-              style={{ minWidth: 44 }}>
+              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl relative"
+              style={{ minWidth: 48 }}>
               {active && (
                 <motion.div layoutId="nav-bg"
                   className="absolute inset-0 rounded-2xl"
-                  style={{ background: 'rgba(232,25,44,0.1)' }}
+                  style={{
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                  }}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
               )}
-              <Icon size={20}
-                style={{ color: active ? '#e8192c' : isDark ? '#555' : '#94a3b8' }}
-                strokeWidth={active ? 2.5 : 1.8} />
-              <span className="text-[9px] font-semibold"
-                style={{ color: active ? '#e8192c' : isDark ? '#555' : '#94a3b8' }}>
+              <Icon size={19}
+                style={{ color: active ? '#f5f5f5' : 'rgba(255,255,255,0.3)' }}
+                strokeWidth={active ? 2.2 : 1.7} />
+              <span className="text-[9px] font-semibold relative z-10"
+                style={{ color: active ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)' }}>
                 {tab.label}
               </span>
             </motion.button>

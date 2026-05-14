@@ -3,22 +3,42 @@ import { persist } from 'zustand/middleware'
 
 export const useStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isDark: true,
       activeTab: 'home',
       currentRoute: null,
+      routeResult: null,
       checklist: {},
 
+      // Route settings — persisted so user doesn't re-enter every time
+      routeSettings: {
+        start: 'München',
+        dest: 'Istanbul',
+        fuel: 'diesel',
+        consumption: 8,
+        fuelPrice: 1.65,
+        avoidFerry: false,
+        avoidToll: false,
+        selectedRouteKey: 'austria_hungary',
+      },
+
       setUser: (user) => set({ user }),
-      toggleDark: () => set((s) => ({ isDark: !s.isDark })),
+      toggleDark: () => {},
       setActiveTab: (tab) => set({ activeTab: tab }),
       setCurrentRoute: (route) => set({ currentRoute: route }),
-      toggleCheckItem: (id) =>
-        set((s) => ({
-          checklist: { ...s.checklist, [id]: !s.checklist[id] },
-        })),
+      setRouteResult: (result) => set({ routeResult: result }),
+      setRouteSettings: (settings) => set((s) => ({ routeSettings: { ...s.routeSettings, ...settings } })),
+      toggleCheckItem: (id) => set((s) => ({ checklist: { ...s.checklist, [id]: !s.checklist[id] } })),
     }),
-    { name: 'sila-store', partialize: (s) => ({ isDark: s.isDark, checklist: s.checklist }) }
+    {
+      name: 'sila-store',
+      partialize: (s) => ({
+        checklist: s.checklist,
+        routeSettings: s.routeSettings,
+        currentRoute: s.currentRoute,
+        routeResult: s.routeResult,
+      }),
+    }
   )
 )

@@ -1,16 +1,16 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Map, AlertTriangle, Fuel, Bot, Users, CheckSquare, ChevronRight, TrendingUp } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import SilaLogo from '../components/SilaLogo'
 
 const features = [
-  { icon: AlertTriangle, label: 'Live Grenzinfos', color: '#e8192c', bg: '#fff0f1', desc: 'Echtzeit Wartezeiten', tab: 'border' },
-  { icon: Fuel, label: 'Tankpreise', color: '#f59e0b', bg: '#fffbeb', desc: 'DE, AT & Route', tab: 'fuel' },
-  { icon: Bot, label: 'KI Assistent', color: '#1a237e', bg: '#eef0ff', desc: 'GPT-4 powered', tab: 'ai' },
-  { icon: Map, label: 'Vignetten', color: '#7c3aed', bg: '#f5f3ff', desc: '9 Länder', tab: 'route' },
-  { icon: Users, label: 'Community', color: '#059669', bg: '#ecfdf5', desc: 'Live Meldungen', tab: 'community' },
-  { icon: CheckSquare, label: 'Checkliste', color: '#ea580c', bg: '#fff7ed', desc: 'Reise Vorbereitung', tab: 'profile' },
+  { icon: AlertTriangle, label: 'Live Grenzinfos', color: '#f59e0b', desc: 'Echtzeit Wartezeiten', tab: 'border' },
+  { icon: Fuel, label: 'Tankpreise', color: '#60a5fa', desc: 'DE, AT & Route', tab: 'fuel' },
+  { icon: Bot, label: 'KI Assistent', color: '#a78bfa', desc: 'Reise-Assistent', tab: 'ai' },
+  { icon: Map, label: 'Route & Maut', color: '#34d399', desc: '4 Routen, Vignetten', tab: 'route' },
+  { icon: Users, label: 'Community', color: '#fb7185', desc: 'Live Meldungen', tab: 'community' },
+  { icon: CheckSquare, label: 'Checkliste', color: '#e2e8f0', desc: 'Reise Vorbereitung', tab: 'profile' },
 ]
 
 const stats = [
@@ -19,64 +19,148 @@ const stats = [
   { label: 'Länder', value: '12+' },
 ]
 
-// Animated car on road
+const CITIES = [
+  { label: 'München', pct: 0, flag: '🇩🇪' },
+  { label: 'Wien', pct: 0.2, flag: '🇦🇹' },
+  { label: 'Budapest', pct: 0.38, flag: '🇭🇺' },
+  { label: 'Belgrad', pct: 0.56, flag: '🇷🇸' },
+  { label: 'Sofia', pct: 0.74, flag: '🇧🇬' },
+  { label: 'İstanbul', pct: 1, flag: '🇹🇷' },
+]
+
+const TOTAL_KM = 2800
+
 function CarAnimation() {
   const x = useMotionValue(0)
+  const [km, setKm] = useState(0)
+  const [activeCity, setActiveCity] = useState(0)
 
   useEffect(() => {
-    const ctrl = animate(x, [0, 260], {
-      duration: 3.5,
+    const ctrl = animate(x, [0, 1], {
+      duration: 6,
       repeat: Infinity,
-      repeatDelay: 0.5,
-      ease: 'easeInOut',
+      repeatDelay: 1.2,
+      ease: [0.4, 0, 0.2, 1],
+      onUpdate(v) {
+        setKm(Math.round(v * TOTAL_KM))
+        const idx = CITIES.findLastIndex(c => v >= c.pct)
+        setActiveCity(idx >= 0 ? idx : 0)
+      },
     })
-    return ctrl.stop
+    return () => ctrl.stop()
   }, [])
 
-  const roadProgress = useTransform(x, [0, 260], [0, 1])
+  const roadWidth = 300
+  const carX = useTransform(x, [0, 1], [0, roadWidth - 28])
 
   return (
-    <div className="relative w-full h-16 my-2">
-      {/* Road */}
-      <div className="absolute bottom-4 left-0 right-0 h-8 rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.12)' }}>
-        {/* Dashed lane */}
-        <div className="absolute top-1/2 left-0 right-0 flex gap-3 px-4" style={{ transform: 'translateY(-50%)' }}>
-          {[...Array(10)].map((_, i) => (
-            <motion.div key={i} className="h-0.5 flex-1 rounded-full"
-              style={{ background: 'rgba(255,255,255,0.4)' }}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.1 }} />
-          ))}
-        </div>
-        {/* Flags */}
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">🇩🇪</div>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-lg">🇹🇷</div>
+    <div className="relative w-full select-none" style={{ height: 88 }}>
+      {/* City labels */}
+      <div className="absolute top-0 left-0 right-0 flex justify-between px-1" style={{ height: 32 }}>
+        {CITIES.map((c, i) => (
+          <div key={i} className="flex flex-col items-center gap-0.5" style={{ width: 36 }}>
+            <motion.div
+              animate={{ scale: activeCity === i ? 1.3 : 1, opacity: activeCity >= i ? 1 : 0.35 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="text-sm leading-none">
+              {c.flag}
+            </motion.div>
+            <span className="text-[8px] font-semibold leading-none"
+              style={{ color: activeCity === i ? '#ffffff' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
+              {c.label}
+            </span>
+          </div>
+        ))}
       </div>
 
-      {/* Moving car */}
-      <motion.div style={{ x, position: 'absolute', bottom: 6 }}
-        className="text-2xl select-none">
+      {/* Road — glass dark */}
+      <div className="absolute left-0 right-0 rounded-2xl overflow-hidden"
+        style={{
+          top: 36, height: 28,
+          background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(8px)',
+        }}>
+        {/* Progress fill */}
+        <motion.div className="absolute left-0 top-0 bottom-0 rounded-l-2xl"
+          style={{
+            width: useTransform(x, [0, 1], ['0%', '100%']),
+            background: 'linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))',
+          }} />
+        {/* Dashes */}
+        <motion.div className="absolute top-1/2 flex gap-4"
+          style={{ transform: 'translateY(-50%)', width: 600 }}
+          animate={{ x: [0, -120] }}
+          transition={{ repeat: Infinity, duration: 1.4, ease: 'linear' }}>
+          {[...Array(18)].map((_, i) => (
+            <div key={i} className="rounded-full flex-shrink-0"
+              style={{ width: 20, height: 2, background: 'rgba(255,255,255,0.2)' }} />
+          ))}
+        </motion.div>
+        {/* City dots */}
+        {CITIES.map((c, i) => (
+          <motion.div key={i} className="absolute top-1/2 rounded-full"
+            style={{
+              left: `${c.pct * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              width: 5, height: 5,
+              background: activeCity >= i ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)',
+              boxShadow: activeCity >= i ? '0 0 6px rgba(255,255,255,0.6)' : 'none',
+            }}
+            animate={{ scale: activeCity === i ? [1, 1.6, 1] : 1 }}
+            transition={{ repeat: activeCity === i ? Infinity : 0, duration: 0.8 }} />
+        ))}
+      </div>
+
+      {/* Car */}
+      <motion.div
+        style={{ x: carX, position: 'absolute', top: 30, fontSize: 22 }}
+        animate={{ y: [0, -1, 0] }}
+        transition={{ repeat: Infinity, duration: 0.35, ease: 'easeInOut' }}>
         🚗
       </motion.div>
+
+      {/* KM */}
+      <div className="absolute right-0 bottom-0">
+        <span className="text-[10px] font-bold tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          {km.toLocaleString()} km
+        </span>
+      </div>
     </div>
   )
 }
 
 export default function HomePage() {
-  const { isDark, setActiveTab } = useStore()
-  const bg = isDark ? '#0d0d0d' : '#ffffff'
-  const cardBg = isDark ? '#1a1a1a' : '#ffffff'
-  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
-  const textMain = isDark ? '#f5f5f5' : '#0f172a'
-  const textMuted = isDark ? '#888' : '#64748b'
+  const { setActiveTab } = useStore()
+
+  const glass = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+  }
+  const cardBg = 'rgba(255,255,255,0.04)'
+  const cardBorder = 'rgba(255,255,255,0.08)'
+  const textMain = '#f5f5f5'
+  const textMuted = 'rgba(255,255,255,0.38)'
 
   return (
-    <div className="page-container" style={{ background: bg }}>
-      {/* Hero */}
-      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(160deg, #e8192c 0%, #9b1120 55%, #1a237e 100%)', minHeight: 340 }}>
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(35%, -35%)' }} />
-        <div className="absolute bottom-0 left-0 w-56 h-56 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(-30%, 30%)' }} />
+    <div className="page-container" style={{ background: 'linear-gradient(135deg, #080810 0%, #0d0d1a 50%, #080810 100%)' }}>
+
+      {/* Hero — liquid glass */}
+      <div className="relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
+          backdropFilter: 'blur(40px)',
+          minHeight: 340,
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+        }}>
+        {/* Ambient glows */}
+        <div className="absolute top-0 left-1/4 pointer-events-none"
+          style={{ width: 400, height: 400, background: 'radial-gradient(circle, rgba(120,80,255,0.06) 0%, transparent 65%)', transform: 'translate(-50%,-40%)' }} />
+        <div className="absolute bottom-0 right-0 pointer-events-none"
+          style={{ width: 300, height: 300, background: 'radial-gradient(circle, rgba(80,160,255,0.05) 0%, transparent 65%)', transform: 'translate(30%,30%)' }} />
 
         <div className="relative z-10 px-5 pt-12 pb-6">
           {/* Logo + Badge */}
@@ -84,24 +168,24 @@ export default function HomePage() {
             <div className="flex items-center gap-3">
               <SilaLogo size={44} />
               <div>
-                <div className="text-white font-black text-xl leading-none">Sıla Yolu</div>
-                <div className="font-black text-xl leading-none" style={{ color: '#ffd700' }}>AI</div>
+                <div className="font-black text-xl leading-none" style={{ color: textMain }}>Sıla Yolu</div>
+                <div className="font-black text-xl leading-none" style={{ color: 'rgba(255,255,255,0.5)' }}>AI</div>
               </div>
             </div>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}>
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-white text-xs font-medium">12.4K Live</span>
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
+              <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>12.4K Live</span>
             </motion.div>
           </div>
 
           <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="text-white/75 text-sm mb-4">
+            className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Dein smarter Reiseassistent für die Fahrt in die Türkei.
           </motion.p>
 
-          {/* Animated car road */}
+          {/* Car animation */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
             <CarAnimation />
           </motion.div>
@@ -120,10 +204,15 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.05 }}
                   onClick={() => setActiveTab(btn.tab)}
                   className="flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold"
-                  style={{
-                    background: btn.primary ? 'white' : 'rgba(255,255,255,0.12)',
-                    color: btn.primary ? '#e8192c' : 'white',
-                    border: btn.primary ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                  style={btn.primary ? {
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#f0f0f0',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    backdropFilter: 'blur(8px)',
+                  } : {
+                    background: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.08)',
                   }}>
                   <Icon size={15} /> {btn.label}
                 </motion.button>
@@ -139,8 +228,8 @@ export default function HomePage() {
           {stats.map((s, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
               className="rounded-2xl p-3 text-center"
-              style={{ background: cardBg, border: `1px solid ${border}` }}>
-              <div className="text-xl font-black" style={{ color: '#e8192c' }}>{s.value}</div>
+              style={glass}>
+              <div className="text-xl font-black" style={{ color: textMain }}>{s.value}</div>
               <div className="text-xs mt-0.5" style={{ color: textMuted }}>{s.label}</div>
             </motion.div>
           ))}
@@ -151,7 +240,7 @@ export default function HomePage() {
       <div className="px-4 pb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-base" style={{ color: textMain }}>Alle Features</h2>
-          <div className="flex items-center gap-1 text-xs" style={{ color: '#e8192c' }}>
+          <div className="flex items-center gap-1 text-xs" style={{ color: textMuted }}>
             <TrendingUp size={12} /> Neu
           </div>
         </div>
@@ -164,9 +253,9 @@ export default function HomePage() {
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setActiveTab(f.tab)}
                 className="rounded-2xl p-4 cursor-pointer"
-                style={{ background: isDark ? '#1a1a1a' : f.bg, border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : f.color + '20'}` }}>
+                style={glass}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                  style={{ background: isDark ? f.color + '20' : f.color + '18' }}>
+                  style={{ background: 'rgba(255,255,255,0.06)' }}>
                   <Icon size={18} style={{ color: f.color }} />
                 </div>
                 <div className="font-semibold text-sm" style={{ color: textMain }}>{f.label}</div>
@@ -177,19 +266,23 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Premium Banner */}
+      {/* Premium Banner — glass dark */}
       <div className="px-4 pb-6">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
           className="rounded-2xl p-5 flex items-center justify-between"
-          style={{ background: 'linear-gradient(135deg, #e8192c, #1a237e)', boxShadow: '0 8px 32px rgba(232,25,44,0.25)' }}>
+          style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(12px)',
+          }}>
           <div>
-            <div className="text-xs font-bold mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>⭐ PREMIUM</div>
-            <div className="text-white font-bold">Alles freischalten</div>
-            <div className="text-white/60 text-xs mt-0.5">KI Voice · Offline · PDF</div>
+            <div className="text-xs font-bold mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>⭐ PREMIUM</div>
+            <div className="font-bold" style={{ color: textMain }}>Alles freischalten</div>
+            <div className="text-xs mt-0.5" style={{ color: textMuted }}>KI Voice · Offline · PDF</div>
           </div>
           <motion.button whileTap={{ scale: 0.95 }}
             className="px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-1"
-            style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}>
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.12)' }}>
             Upgrade <ChevronRight size={14} />
           </motion.button>
         </motion.div>

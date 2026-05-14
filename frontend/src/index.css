@@ -4,67 +4,85 @@
 
 @layer base {
   :root {
-    --bg: #ffffff;
-    --bg2: #f7f8fc;
-    --card: #ffffff;
-    --border: rgba(0,0,0,0.07);
-    --text: #0f172a;
-    --muted: #64748b;
-    --red: #e8192c;
-    --red2: #c0111f;
-    --blue: #1a237e;
-  }
-  .dark {
-    --bg: #0d0d0d;
-    --bg2: #141414;
-    --card: #1a1a1a;
-    --border: rgba(255,255,255,0.07);
+    --bg: #060610;
+    --bg2: #0a0a18;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.08);
     --text: #f5f5f5;
-    --muted: #888;
-    --red: #e8192c;
-    --red2: #c0111f;
-    --blue: #3b5bdb;
+    --muted: rgba(255,255,255,0.4);
+    --nav-h: 72px;
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+    background: #060610;
+  }
+
   body {
-    background: var(--bg);
-    color: var(--text);
+    background: #060610;
+    color: #f5f5f5;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
-  #root { min-height: 100svh; }
-  ::-webkit-scrollbar { width: 3px; }
-  ::-webkit-scrollbar-thumb { background: #e8192c30; border-radius: 2px; }
+
+  #root {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
 }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @layer utilities {
-  .page-container {
-    max-width: 480px;
-    margin: 0 auto;
-    min-height: 100svh;
-    padding-bottom: 90px;
-    position: relative;
-    background: var(--bg);
-  }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-  }
-  .btn-red {
-    background: linear-gradient(135deg, #e8192c, #c0111f);
-    color: white;
-    font-weight: 700;
-    padding: 15px 24px;
-    border-radius: 16px;
-    border: none;
-    cursor: pointer;
-    font-size: 15px;
-    box-shadow: 0 4px 20px rgba(232,25,44,0.35);
-    transition: all 0.2s;
+  /* App shell — fixed width, full height, scroll inside */
+  .app-shell {
     width: 100%;
+    max-width: 480px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #060610;
   }
-  .btn-red:active { transform: scale(0.97); }
+
+  /* Every page fills the shell and scrolls internally */
+  .page-scroll {
+    position: absolute;
+    inset: 0;
+    bottom: var(--nav-h);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    background: linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%);
+  }
+
+  /* Legacy alias — kept for components that still use it */
+  .page-container {
+    min-height: 100%;
+    padding-bottom: 24px;
+    background: linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 2px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Glass */
+  .glass {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
 }
