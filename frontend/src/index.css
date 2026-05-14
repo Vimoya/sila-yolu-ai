@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --text: #0f172a;
+    --muted: #64748b;
+  }
+  .dark {
+    --bg: #0a0f1e;
+    --card: #111827;
+    --border: rgba(255,255,255,0.08);
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  #root { min-height: 100svh; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .glass-dark {
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    font-weight: 600;
+    padding: 14px 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(220,38,38,0.4);
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+  }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-secondary {
+    background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    color: white;
+    font-weight: 600;
+    padding: 14px 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(29,78,216,0.3);
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+  }
+  .btn-secondary:active { transform: scale(0.97); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .page-container {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100svh;
+    padding-bottom: 90px;
+    position: relative;
+  }
+}
