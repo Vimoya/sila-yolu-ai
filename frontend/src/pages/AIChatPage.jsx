@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Bot, User, Volume2, VolumeX, Sparkles } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import VoiceButton from '../components/VoiceButton'
+import SilaLogo from '../components/SilaLogo'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -70,9 +71,8 @@ export default function AIChatPage() {
       <div className="px-4 pt-6 pb-3 flex-shrink-0" style={{ borderBottom: `1px solid ${borderColor}` }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center relative"
-              style={{ background: 'linear-gradient(135deg, #e8192c, #1a237e)' }}>
-              <Bot size={20} color="white" />
+            <div className="relative">
+              <SilaLogo size={44} />
               <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-400 border-2"
                 style={{ borderColor: bg }} />
             </div>

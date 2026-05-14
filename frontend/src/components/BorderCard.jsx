@@ -18,7 +18,7 @@ export default function BorderCard({ border, onReport }) {
       animate={{ opacity: 1, scale: 1 }}
       className="rounded-3xl p-5"
       style={{
-        background: isDark ? '#111827' : '#ffffff',
+        background: isDark ? '#1a1a1a' : '#ffffff',
         border: `1px solid ${status.color}30`,
         boxShadow: `0 4px 20px ${status.color}15`,
       }}
@@ -70,9 +70,9 @@ export default function BorderCard({ border, onReport }) {
           whileTap={{ scale: 0.95 }}
           onClick={() => onReport?.(border, 'voice')}
           className="w-10 h-10 rounded-2xl flex items-center justify-center"
-          style={{ background: 'rgba(220,38,38,0.15)' }}
+          style={{ background: 'rgba(232,25,44,0.15)' }}
         >
-          <Mic size={16} style={{ color: '#dc2626' }} />
+          <Mic size={16} style={{ color: '#e8192c' }} />
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}

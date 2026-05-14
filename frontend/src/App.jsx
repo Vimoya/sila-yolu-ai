@@ -48,7 +48,7 @@ export default function App() {
   const Page = PAGES[activeTab] || HomePage
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', position: 'relative', background: isDark ? '#0a0f1e' : '#f8fafc', minHeight: '100svh' }}>
+    <div style={{ maxWidth: 480, margin: '0 auto', position: 'relative', background: isDark ? '#0d0d0d' : '#ffffff', minHeight: '100svh' }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -66,8 +66,8 @@ export default function App() {
         position="top-center"
         toastOptions={{
           style: {
-            background: isDark ? '#111827' : '#ffffff',
-            color: isDark ? '#f1f5f9' : '#0f172a',
+            background: isDark ? '#1a1a1a' : '#ffffff',
+            color: isDark ? '#f5f5f5' : '#0f172a',
             borderRadius: 16,
             border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
             fontSize: 14,

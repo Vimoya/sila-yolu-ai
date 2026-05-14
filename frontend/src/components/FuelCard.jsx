@@ -10,14 +10,14 @@ export default function FuelCard({ station }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl p-4"
-      style={{ background: isDark ? '#111827' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)' }}
+      style={{ background: isDark ? '#1a1a1a' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)' }}
     >
       <div className="flex items-start justify-between mb-2">
         <div>
-          <div className="font-semibold text-sm" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
+          <div className="font-semibold text-sm" style={{ color: isDark ? '#f5f5f5' : '#0f172a' }}>
             {station.name}
           </div>
-          <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+          <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: isDark ? '#888' : '#64748b' }}>
             <MapPin size={11} /> {station.address}
           </div>
         </div>
@@ -33,7 +33,7 @@ export default function FuelCard({ station }) {
         {station.diesel != null && (
           <div className="flex-1 rounded-xl p-2 text-center"
             style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }}>
-            <div className="text-xs" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>Diesel</div>
+            <div className="text-xs" style={{ color: isDark ? '#888' : '#64748b' }}>Diesel</div>
             <div className="font-bold text-base" style={{ color: '#f59e0b' }}>
               {station.diesel.toFixed(3)} €
             </div>
@@ -42,7 +42,7 @@ export default function FuelCard({ station }) {
         {station.benzin != null && (
           <div className="flex-1 rounded-xl p-2 text-center"
             style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }}>
-            <div className="text-xs" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>Benzin</div>
+            <div className="text-xs" style={{ color: isDark ? '#888' : '#64748b' }}>Benzin</div>
             <div className="font-bold text-base" style={{ color: '#3b82f6' }}>
               {station.benzin.toFixed(3)} €
             </div>
