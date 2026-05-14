@@ -4,18 +4,26 @@
 
 @layer base {
   :root {
-    --bg: #f8fafc;
+    --bg: #ffffff;
+    --bg2: #f7f8fc;
     --card: #ffffff;
-    --border: rgba(0,0,0,0.08);
+    --border: rgba(0,0,0,0.07);
     --text: #0f172a;
     --muted: #64748b;
+    --red: #e8192c;
+    --red2: #c0111f;
+    --blue: #1a237e;
   }
   .dark {
-    --bg: #0a0f1e;
-    --card: #111827;
-    --border: rgba(255,255,255,0.08);
-    --text: #f1f5f9;
-    --muted: #94a3b8;
+    --bg: #0d0d0d;
+    --bg2: #141414;
+    --card: #1a1a1a;
+    --border: rgba(255,255,255,0.07);
+    --text: #f5f5f5;
+    --muted: #888;
+    --red: #e8192c;
+    --red2: #c0111f;
+    --blue: #3b5bdb;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -26,29 +34,37 @@
     overflow-x: hidden;
   }
   #root { min-height: 100svh; }
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: #e8192c30; border-radius: 2px; }
 }
 
 @layer utilities {
-  .glass {
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.12);
-  }
-  .glass-dark {
-    background: rgba(0,0,0,0.35);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.08);
-  }
   .page-container {
     max-width: 480px;
     margin: 0 auto;
     min-height: 100svh;
     padding-bottom: 90px;
     position: relative;
+    background: var(--bg);
   }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  }
+  .btn-red {
+    background: linear-gradient(135deg, #e8192c, #c0111f);
+    color: white;
+    font-weight: 700;
+    padding: 15px 24px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    box-shadow: 0 4px 20px rgba(232,25,44,0.35);
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .btn-red:active { transform: scale(0.97); }
 }

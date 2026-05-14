@@ -17,11 +17,11 @@ export default function ProfilePage() {
   const { isDark, toggleDark, user, setUser, checklist, toggleCheckItem } = useStore()
   const [activeSection, setActiveSection] = useState('settings')
 
-  const bg = isDark ? '#0a0f1e' : '#f8fafc'
-  const cardBg = isDark ? '#111827' : '#ffffff'
-  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
-  const textMain = isDark ? '#f1f5f9' : '#0f172a'
-  const textMuted = isDark ? '#64748b' : '#94a3b8'
+  const bg = isDark ? '#0d0d0d' : '#ffffff'
+  const cardBg = isDark ? '#1a1a1a' : '#ffffff'
+  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
+  const textMain = isDark ? '#f5f5f5' : '#0f172a'
+  const textMuted = isDark ? '#888' : '#64748b'
 
   const totalItems = CHECKLIST_CATEGORIES.flatMap(c => c.items).length
   const checkedItems = CHECKLIST_CATEGORIES.flatMap(c => c.items.map((_, i) => `${c.id}_${i}`)).filter(id => checklist[id]).length
@@ -38,7 +38,7 @@ export default function ProfilePage() {
         {/* Profile Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-3xl p-5 mb-4 text-center"
-          style={{ background: 'linear-gradient(135deg, #0a0f1e, #1a1035)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          style={{ background: 'linear-gradient(135deg, #e8192c, #1a237e)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl"
             style={{ background: 'linear-gradient(135deg, #dc2626, #1d4ed8)' }}>
             {user?.photoURL ? <img src={user.photoURL} className="w-full h-full rounded-full object-cover" alt="avatar" /> : <User size={28} color="white" />}
@@ -57,7 +57,7 @@ export default function ProfilePage() {
           {[['settings', '⚙️ Einstellungen'], ['checklist', '✅ Checkliste']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveSection(id)}
               className="flex-1 py-2.5 rounded-2xl text-sm font-semibold transition-all"
-              style={{ background: activeSection === id ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : isDark ? '#1e293b' : '#f1f5f9', color: activeSection === id ? 'white' : textMuted }}>
+              style={{ background: activeSection === id ? 'linear-gradient(135deg, #e8192c, #c0111f)' : isDark ? '#1a1a1a' : '#f7f8fc', color: activeSection === id ? 'white' : textMuted }}>
               {label}
             </button>
           ))}
@@ -104,9 +104,9 @@ export default function ProfilePage() {
             {/* Premium Upgrade */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
               className="rounded-3xl p-5"
-              style={{ background: 'linear-gradient(135deg, #0a0f1e, #1a1035)', border: '1px solid rgba(245,158,11,0.25)' }}>
-              <div className="font-bold text-white mb-1">⭐ Premium freischalten</div>
-              <div className="text-white/60 text-xs mb-3">KI Voice, Offline, PDF Export, Live Warnungen</div>
+              style={{ background: isDark ? '#1a1a1a' : '#f7f8fc', border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.3)'}` }}>
+              <div className="font-bold mb-1" style={{ color: textMain }}>⭐ Premium freischalten</div>
+              <div className="text-xs mb-3" style={{ color: textMuted }}>KI Voice, Offline, PDF Export, Live Warnungen</div>
               <button className="px-5 py-2.5 rounded-xl text-sm font-bold"
                 style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white' }}>
                 Jetzt upgraden
@@ -117,7 +117,7 @@ export default function ProfilePage() {
             {user && (
               <motion.button onClick={handleLogout} whileTap={{ scale: 0.97 }}
                 className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-sm"
-                style={{ background: isDark ? '#1e293b' : '#f1f5f9', color: '#ef4444' }}>
+                style={{ background: isDark ? '#1a1a1a' : '#f7f8fc', color: '#ef4444' }}>
                 <LogOut size={16} /> Abmelden
               </motion.button>
             )}
@@ -132,7 +132,7 @@ export default function ProfilePage() {
                 <span className="font-semibold" style={{ color: textMain }}>Reise-Checkliste</span>
                 <span className="font-bold" style={{ color: '#22c55e' }}>{progress}%</span>
               </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: isDark ? '#1e293b' : '#f1f5f9' }}>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: isDark ? '#1a1a1a' : '#f7f8fc' }}>
                 <motion.div className="h-full rounded-full"
                   style={{ background: 'linear-gradient(90deg, #22c55e, #16a34a)' }}
                   animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />

@@ -21,9 +21,10 @@ export default function BorderPage() {
   const [reportModal, setReportModal] = useState(null)
   const [reportText, setReportText] = useState('')
 
-  const bg = isDark ? '#0a0f1e' : '#f8fafc'
-  const textMain = isDark ? '#f1f5f9' : '#0f172a'
-  const textMuted = isDark ? '#64748b' : '#94a3b8'
+  const bg = isDark ? '#0d0d0d' : '#ffffff'
+  const textMain = isDark ? '#f5f5f5' : '#0f172a'
+  const textMuted = isDark ? '#888' : '#64748b'
+  const borderColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
 
   useEffect(() => {
     setTimeout(() => { setBorders(DUMMY_BORDERS); setLoading(false) }, 800)
@@ -58,7 +59,7 @@ export default function BorderPage() {
           <h1 className="text-2xl font-black" style={{ color: textMain }}>Live Grenze</h1>
           <motion.button whileTap={{ scale: 0.9 }} onClick={refresh}
             className="w-10 h-10 rounded-2xl flex items-center justify-center"
-            style={{ background: isDark ? '#1e293b' : '#f1f5f9' }}>
+            style={{ background: isDark ? '#1a1a1a' : '#f7f8fc' }}>
             <RefreshCw size={16} style={{ color: textMuted }} />
           </motion.button>
         </div>
@@ -113,7 +114,7 @@ export default function BorderPage() {
           onClick={e => e.target === e.currentTarget && setReportModal(null)}>
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }}
             className="w-full max-w-md rounded-3xl p-5"
-            style={{ background: isDark ? '#111827' : '#ffffff' }}>
+            style={{ background: isDark ? '#1a1a1a' : '#ffffff' }}>
             <h3 className="font-bold mb-1" style={{ color: textMain }}>Meldung: {reportModal.name}</h3>
             <p className="text-sm mb-4" style={{ color: textMuted }}>Teile aktuelle Infos mit anderen Fahrern</p>
             <textarea
@@ -122,17 +123,17 @@ export default function BorderPage() {
               placeholder="Was siehst du gerade? Wartezeit, Besonderheiten..."
               rows={3}
               className="w-full rounded-2xl p-3 text-sm mb-4 resize-none outline-none"
-              style={{ background: isDark ? '#1e293b' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, color: textMain }}
+              style={{ background: isDark ? '#1e293b' : '#f8fafc', border: `1px solid ${borderColor}`, color: textMain }}
             />
             <div className="flex gap-2">
               <button onClick={() => setReportModal(null)}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold"
-                style={{ background: isDark ? '#1e293b' : '#f1f5f9', color: textMuted }}>
+                style={{ background: isDark ? '#1a1a1a' : '#f7f8fc', color: textMuted }}>
                 Abbrechen
               </button>
               <button onClick={submitReport}
                 className="flex-1 py-3 rounded-2xl text-sm font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}>
+                style={{ background: 'linear-gradient(135deg, #e8192c, #c0111f)' }}>
                 Senden
               </button>
             </div>

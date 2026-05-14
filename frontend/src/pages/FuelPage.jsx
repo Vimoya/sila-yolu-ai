@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Fuel, TrendingDown, MapPin, RefreshCw } from 'lucide-react'
+import { Fuel, TrendingDown, MapPin, RefreshCw, AlertCircle } from 'lucide-react'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 import { useStore } from '../store/useStore'
 import FuelCard from '../components/FuelCard'
 import { SkeletonList } from '../components/LoadingSkeleton'
@@ -30,12 +32,16 @@ export default function FuelPage() {
   const [activeCountry, setActiveCountry] = useState('all')
   const [fuelType, setFuelType] = useState('diesel')
 
-  const bg = isDark ? '#0a0f1e' : '#f8fafc'
-  const textMain = isDark ? '#f1f5f9' : '#0f172a'
-  const textMuted = isDark ? '#64748b' : '#94a3b8'
+  const bg = isDark ? '#0d0d0d' : '#ffffff'
+  const textMain = isDark ? '#f5f5f5' : '#0f172a'
+  const textMuted = isDark ? '#888' : '#64748b'
+  const borderColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
 
   useEffect(() => {
-    setTimeout(() => { setStations(DUMMY_STATIONS); setLoading(false) }, 700)
+    fetch(`${API_BASE}/api/fuel/route`)
+      .then(r => r.json())
+      .then(data => { setStations(data.stations || DUMMY_STATIONS); setLoading(false) })
+      .catch(() => { setStations(DUMMY_STATIONS); setLoading(false) })
   }, [])
 
   const filtered = stations?.filter(s => activeCountry === 'all' || s.country === activeCountry) || []
@@ -54,12 +60,12 @@ export default function FuelPage() {
           <div className="flex gap-2">
             <button onClick={() => setFuelType('diesel')}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-              style={{ background: fuelType === 'diesel' ? '#f59e0b' : isDark ? '#1e293b' : '#f1f5f9', color: fuelType === 'diesel' ? 'white' : textMuted }}>
+              style={{ background: fuelType === 'diesel' ? '#f59e0b' : isDark ? '#1a1a1a' : '#f7f8fc', color: fuelType === 'diesel' ? 'white' : textMuted }}>
               Diesel
             </button>
             <button onClick={() => setFuelType('benzin')}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-              style={{ background: fuelType === 'benzin' ? '#3b82f6' : isDark ? '#1e293b' : '#f1f5f9', color: fuelType === 'benzin' ? 'white' : textMuted }}>
+              style={{ background: fuelType === 'benzin' ? '#3b82f6' : isDark ? '#1a1a1a' : '#f7f8fc', color: fuelType === 'benzin' ? 'white' : textMuted }}>
               Benzin
             </button>
           </div>
@@ -86,7 +92,7 @@ export default function FuelPage() {
             <button key={tab.id} onClick={() => setActiveCountry(tab.id)}
               className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1"
               style={{
-                background: activeCountry === tab.id ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : isDark ? '#1e293b' : '#f1f5f9',
+                background: activeCountry === tab.id ? 'linear-gradient(135deg, #e8192c, #c0111f)' : isDark ? '#1a1a1a' : '#f7f8fc',
                 color: activeCountry === tab.id ? 'white' : textMuted,
               }}>
               {tab.flag} {tab.label}
@@ -115,11 +121,11 @@ export default function FuelPage() {
         {/* Community Report */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
           className="mt-6 rounded-3xl p-4"
-          style={{ background: isDark ? '#111827' : '#ffffff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}` }}>
+          style={{ background: isDark ? '#1a1a1a' : '#ffffff', border: `1px solid ${borderColor}` }}>
           <h3 className="font-bold mb-2 text-sm" style={{ color: textMain }}>Preis melden</h3>
           <p className="text-xs mb-3" style={{ color: textMuted }}>Hilf anderen Fahrern mit aktuellen Preisen</p>
           <button className="w-full py-3 rounded-2xl text-sm font-semibold"
-            style={{ background: isDark ? '#1e293b' : '#f1f5f9', color: '#3b82f6' }}>
+            style={{ background: isDark ? '#1a1a1a' : '#f7f8fc', color: '#3b82f6' }}>
             + Tankstelle & Preis melden
           </button>
         </motion.div>

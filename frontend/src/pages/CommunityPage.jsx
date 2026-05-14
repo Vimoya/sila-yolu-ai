@@ -45,9 +45,10 @@ export default function CommunityPage() {
   const [likedIds, setLikedIds] = useState(new Set())
   const bottomRef = useRef(null)
 
-  const bg = isDark ? '#0a0f1e' : '#f8fafc'
-  const textMain = isDark ? '#f1f5f9' : '#0f172a'
-  const textMuted = isDark ? '#64748b' : '#94a3b8'
+  const bg = isDark ? '#0d0d0d' : '#ffffff'
+  const textMain = isDark ? '#f5f5f5' : '#0f172a'
+  const textMuted = isDark ? '#888' : '#64748b'
+  const borderColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -89,7 +90,7 @@ export default function CommunityPage() {
             <button key={room.id} onClick={() => setActiveRoom(room.id)}
               className="flex-shrink-0 px-3 py-2 rounded-2xl text-xs font-medium flex items-center gap-1.5 transition-all"
               style={{
-                background: activeRoom === room.id ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : isDark ? '#1e293b' : '#f1f5f9',
+                background: activeRoom === room.id ? 'linear-gradient(135deg, #e8192c, #c0111f)' : isDark ? '#1a1a1a' : '#f7f8fc',
                 color: activeRoom === room.id ? 'white' : textMuted,
               }}>
               <span>{room.icon}</span> {room.name}
@@ -115,11 +116,11 @@ export default function CommunityPage() {
                   )}
                   <div className="px-4 py-2.5 rounded-2xl text-sm"
                     style={{
-                      background: msg.isMe ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
+                      background: msg.isMe ? 'linear-gradient(135deg, #e8192c, #c0111f)'
                         : msg.isAdmin ? 'rgba(245,158,11,0.15)'
-                        : isDark ? '#111827' : '#ffffff',
+                        : isDark ? '#1a1a1a' : '#ffffff',
                       color: msg.isMe ? 'white' : textMain,
-                      border: msg.isMe ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
+                      border: msg.isMe ? 'none' : `1px solid ${borderColor}`,
                     }}>
                     {msg.text}
                   </div>
@@ -141,11 +142,11 @@ export default function CommunityPage() {
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}` }}>
+      <div className="px-4 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${borderColor}` }}>
         <div className="flex items-center gap-2">
           <VoiceButton size="sm" onTranscript={t => sendMessage(t)} />
           <div className="flex-1 flex items-center rounded-2xl px-3"
-            style={{ background: isDark ? '#1e293b' : '#f1f5f9', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` }}>
+            style={{ background: isDark ? '#1a1a1a' : '#f7f8fc', border: `1px solid ${borderColor}` }}>
             <input value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
               placeholder="Nachricht schreiben..."
@@ -154,7 +155,7 @@ export default function CommunityPage() {
           </div>
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => sendMessage(input)}
             className="w-11 h-11 rounded-2xl flex items-center justify-center"
-            style={{ background: input.trim() ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : isDark ? '#1e293b' : '#f1f5f9' }}>
+            style={{ background: input.trim() ? 'linear-gradient(135deg, #e8192c, #c0111f)' : isDark ? '#1a1a1a' : '#f7f8fc' }}>
             <Send size={16} style={{ color: input.trim() ? 'white' : textMuted }} />
           </motion.button>
         </div>

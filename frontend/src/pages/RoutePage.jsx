@@ -19,14 +19,14 @@ export default function RoutePage() {
   const [selectedRoute, setSelectedRoute] = useState(null)
   const [calculated, setCalculated] = useState(false)
 
-  const bg = isDark ? '#0a0f1e' : '#f8fafc'
-  const cardBg = isDark ? '#111827' : '#ffffff'
-  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
-  const textMuted = isDark ? '#64748b' : '#94a3b8'
-  const textMain = isDark ? '#f1f5f9' : '#0f172a'
+  const bg = isDark ? '#0d0d0d' : '#ffffff'
+  const cardBg = isDark ? '#1a1a1a' : '#ffffff'
+  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
+  const textMuted = isDark ? '#888' : '#64748b'
+  const textMain = isDark ? '#f5f5f5' : '#0f172a'
 
   const inputStyle = {
-    background: isDark ? '#1e293b' : '#f8fafc',
+    background: isDark ? '#1a1a1a' : '#f7f8fc',
     border: `1px solid ${border}`,
     borderRadius: 16,
     color: textMain,
@@ -120,7 +120,7 @@ export default function RoutePage() {
                     <label key={i} className="flex items-center gap-2 cursor-pointer">
                       <div onClick={() => setter(!val)}
                         className="w-5 h-5 rounded-md flex items-center justify-center"
-                        style={{ background: val ? '#dc2626' : isDark ? '#1e293b' : '#f1f5f9', border: `1px solid ${val ? '#dc2626' : border}` }}>
+                        style={{ background: val ? '#dc2626' : isDark ? '#1a1a1a' : '#f7f8fc', border: `1px solid ${val ? '#dc2626' : border}` }}>
                         {val && <div className="w-2.5 h-2.5 rounded-sm bg-white" />}
                       </div>
                       <span className="text-sm" style={{ color: textMain }}>{label}</span>
@@ -135,7 +135,7 @@ export default function RoutePage() {
             whileTap={{ scale: 0.97 }}
             onClick={calculate}
             className="w-full py-3.5 rounded-2xl font-bold text-white text-base"
-            style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', boxShadow: '0 4px 20px rgba(220,38,38,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #e8192c, #c0111f)', boxShadow: '0 4px 20px rgba(220,38,38,0.35)' }}
           >
             Route berechnen
           </motion.button>

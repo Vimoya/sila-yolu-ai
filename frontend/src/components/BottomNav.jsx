@@ -7,7 +7,7 @@ const tabs = [
   { id: 'route', icon: Map, label: 'Route' },
   { id: 'border', icon: AlertTriangle, label: 'Grenze' },
   { id: 'fuel', icon: Fuel, label: 'Tanken' },
-  { id: 'ai', icon: Bot, label: 'KI Chat' },
+  { id: 'ai', icon: Bot, label: 'KI' },
   { id: 'community', icon: Users, label: 'Community' },
   { id: 'profile', icon: User, label: 'Profil' },
 ]
@@ -16,44 +16,34 @@ export default function BottomNav() {
   const { activeTab, setActiveTab, isDark } = useStore()
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
+    <nav className="fixed bottom-0 left-0 right-0 z-50"
       style={{
-        background: isDark ? 'rgba(10,15,30,0.95)' : 'rgba(255,255,255,0.95)',
+        maxWidth: 480, margin: '0 auto',
+        background: isDark ? 'rgba(20,20,20,0.97)' : 'rgba(255,255,255,0.97)',
         backdropFilter: 'blur(20px)',
-        borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
-        maxWidth: 480,
-        margin: '0 auto',
-      }}
-    >
+        borderTop: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.06)',
+        left: '50%', transform: 'translateX(-50%)', width: '100%',
+      }}>
       <div className="flex items-center justify-around px-1 py-2">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const active = activeTab === tab.id
           return (
-            <motion.button
-              key={tab.id}
-              whileTap={{ scale: 0.85 }}
+            <motion.button key={tab.id} whileTap={{ scale: 0.82 }}
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center gap-0.5 px-1 py-1 relative"
-            >
+              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl relative transition-all"
+              style={{ minWidth: 44 }}>
               {active && (
-                <motion.div
-                  layoutId="nav-pill"
-                  className="absolute inset-0 rounded-xl"
-                  style={{ background: 'linear-gradient(135deg, rgba(220,38,38,0.2), rgba(29,78,216,0.2))' }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
+                <motion.div layoutId="nav-bg"
+                  className="absolute inset-0 rounded-2xl"
+                  style={{ background: 'rgba(232,25,44,0.1)' }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
               )}
-              <Icon
-                size={20}
-                style={{ color: active ? '#dc2626' : isDark ? '#64748b' : '#94a3b8' }}
-                strokeWidth={active ? 2.5 : 1.8}
-              />
-              <span
-                className="text-[9px] font-medium"
-                style={{ color: active ? '#dc2626' : isDark ? '#64748b' : '#94a3b8' }}
-              >
+              <Icon size={20}
+                style={{ color: active ? '#e8192c' : isDark ? '#555' : '#94a3b8' }}
+                strokeWidth={active ? 2.5 : 1.8} />
+              <span className="text-[9px] font-semibold"
+                style={{ color: active ? '#e8192c' : isDark ? '#555' : '#94a3b8' }}>
                 {tab.label}
               </span>
             </motion.button>

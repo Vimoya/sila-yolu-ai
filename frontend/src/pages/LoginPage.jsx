@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [success, setSuccess] = useState('')
 
   const inputStyle = {
-    background: isDark ? '#1e293b' : '#f8fafc',
+    background: isDark ? '#1a1a1a' : '#f7f8fc',
     border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
     borderRadius: 16,
     color: isDark ? '#f1f5f9' : '#0f172a',
@@ -47,13 +47,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: isDark ? '#0a0f1e' : '#f8fafc' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: isDark ? '#0d0d0d' : '#ffffff' }}>
       {/* Hero */}
       <div className="relative overflow-hidden flex flex-col items-center justify-center pt-16 pb-8 px-6"
-        style={{ background: 'linear-gradient(160deg, #0a0f1e 0%, #1a1035 100%)' }}>
+        style={{ background: 'linear-gradient(160deg, #e8192c 0%, #9b1120 60%, #1a237e 100%)' }}>
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300 }}
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-          style={{ background: 'linear-gradient(135deg, #dc2626, #1d4ed8)' }}>
+          style={{ background: 'linear-gradient(135deg, #e8192c, #1a237e)' }}>
           <Zap size={32} color="white" fill="white" />
         </motion.div>
         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -66,11 +66,11 @@ export default function LoginPage() {
       {/* Form */}
       <div className="flex-1 px-5 pt-8 max-w-sm mx-auto w-full">
         {/* Mode Tabs */}
-        <div className="flex gap-1 mb-6 p-1 rounded-2xl" style={{ background: isDark ? '#111827' : '#f1f5f9' }}>
+        <div className="flex gap-1 mb-6 p-1 rounded-2xl" style={{ background: isDark ? '#1a1a1a' : '#f7f8fc' }}>
           {[['login', 'Anmelden'], ['register', 'Registrieren']].map(([id, label]) => (
             <button key={id} onClick={() => setMode(id)}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: mode === id ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : 'transparent', color: mode === id ? 'white' : isDark ? '#64748b' : '#94a3b8' }}>
+              style={{ background: mode === id ? 'linear-gradient(135deg, #e8192c, #c0111f)' : 'transparent', color: mode === id ? 'white' : isDark ? '#64748b' : '#94a3b8' }}>
               {label}
             </button>
           ))}
@@ -109,7 +109,7 @@ export default function LoginPage() {
 
           <motion.button whileTap={{ scale: 0.97 }} onClick={handleSubmit} disabled={loading}
             className="w-full py-4 rounded-2xl font-bold text-white text-base mt-1"
-            style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', boxShadow: '0 4px 20px rgba(220,38,38,0.35)', opacity: loading ? 0.7 : 1 }}>
+            style={{ background: 'linear-gradient(135deg, #e8192c, #c0111f)', boxShadow: '0 4px 20px rgba(220,38,38,0.35)', opacity: loading ? 0.7 : 1 }}>
             {loading ? '...' : mode === 'login' ? 'Anmelden' : mode === 'register' ? 'Registrieren' : 'Reset senden'}
           </motion.button>
 
