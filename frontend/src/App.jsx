@@ -42,7 +42,10 @@ const PAGES = {
 
 export default function App() {
   const { isDark, activeTab, user, setUser } = useStore()
-  const [showLanding, setShowLanding] = useState(() => localStorage.getItem('sila_seen_landing') !== 'v2')
+  const [showLanding, setShowLanding] = useState(() => {
+    const v = localStorage.getItem('sila_seen_landing')
+    return v !== 'v2' && v !== '1'
+  })
   const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
