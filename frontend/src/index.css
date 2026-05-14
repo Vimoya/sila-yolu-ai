@@ -17,7 +17,7 @@
 
   html, body, #root {
     height: 100%;
-    overflow: hidden;
+    overflow: clip;
     background: #060610;
   }
 
@@ -47,7 +47,7 @@
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: clip;
     background: #060610;
   }
 

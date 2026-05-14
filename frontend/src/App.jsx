@@ -95,8 +95,8 @@ export default function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
           style={isChatPage
-            ? { flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }
-            : { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}
+            ? { flex: 1, minHeight: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }
+            : { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'clip', position: 'relative' }}
         >
           <ErrorBoundary key={activeTab}><Page /></ErrorBoundary>
         </motion.div>
