@@ -4,7 +4,7 @@ import { Send, Heart, Image, X, ArrowLeft, Mic, MicOff } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 const glass = {
-  background: 'rgba(255,255,255,0.05)',
+  background: 'rgba(255,255,255,0.09)',
   border: '1px solid rgba(255,255,255,0.1)',
   backdropFilter: 'blur(20px) saturate(180%)',
   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -248,7 +248,7 @@ export default function CommunityPage() {
                   {msg.text && (
                     <div className="px-3.5 py-2.5 rounded-2xl text-sm"
                       style={isMe ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: textMain, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)' }
-                        : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: textMain }}>
+                        : { background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.09)', color: textMain }}>
                       {msg.text}
                     </div>
                   )}
@@ -341,7 +341,7 @@ export default function CommunityPage() {
                     <div className="px-3.5 py-2.5 rounded-2xl text-sm whitespace-pre-line"
                       style={msg.isMe ? { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: textMain, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)' }
                         : msg.isAdmin ? { background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }
-                        : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: textMain }}>
+                        : { background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.09)', color: textMain }}>
                       {msg.text}
                     </div>
                   )}
@@ -371,7 +371,7 @@ export default function CommunityPage() {
 
 function InputBar({ input, setInput, photoPreview, setPhotoPreview, setPhotoFile, fileInputRef, handlePhotoChange, sendMessage, recording, toggleRecording, textMain, textMuted, border }) {
   const glass = {
-    background: 'rgba(255,255,255,0.05)',
+    background: 'rgba(255,255,255,0.09)',
     border: '1px solid rgba(255,255,255,0.1)',
     backdropFilter: 'blur(20px) saturate(180%)',
     WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -403,7 +403,7 @@ function InputBar({ input, setInput, photoPreview, setPhotoPreview, setPhotoFile
           <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
 
           <div className="flex-1 flex items-center rounded-2xl px-3"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
             <input value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
               placeholder="Nachricht schreiben..."

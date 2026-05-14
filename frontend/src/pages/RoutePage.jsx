@@ -52,7 +52,7 @@ export default function RoutePage() {
   const textMuted = 'rgba(255,255,255,0.4)'
   const textMain = '#f5f5f5'
   const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
+    background: 'rgba(255,255,255,0.09)',
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 14,
     color: textMain,
@@ -337,7 +337,7 @@ export default function RoutePage() {
             </label>
 
             {error && (
-              <div className="flex items-center gap-2 mb-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${border}` }}>
+              <div className="flex items-center gap-2 mb-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.09)', border: `1px solid ${border}` }}>
                 <AlertCircle size={14} style={{ color: textMuted }} />
                 <span className="text-xs" style={{ color: textMuted }}>{error}</span>
               </div>
@@ -539,7 +539,7 @@ export default function RoutePage() {
                             { label: 'Gesamt', val: `${r.total}€` },
                           ].map((s, si) => (
                             <div key={si} className="rounded-xl p-1.5 text-center"
-                              style={{ background: 'rgba(255,255,255,0.05)' }}>
+                              style={{ background: 'rgba(255,255,255,0.09)' }}>
                               <div className="font-black text-xs" style={{ color: textMain }}>{s.val}</div>
                               <div className="text-[9px] mt-0.5" style={{ color: textMuted }}>{s.label}</div>
                             </div>

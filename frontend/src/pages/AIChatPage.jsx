@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore'
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const glass = {
-  background: 'rgba(255,255,255,0.05)',
+  background: 'rgba(255,255,255,0.09)',
   border: '1px solid rgba(255,255,255,0.1)',
   backdropFilter: 'blur(20px) saturate(180%)',
   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -180,7 +180,7 @@ export default function AIChatPage() {
           {QUICK_PROMPTS.map(p => (
             <button key={p} onClick={() => sendMessage(p)}
               className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap"
-              style={{ background: 'rgba(255,255,255,0.05)', color: textMuted, border: `1px solid ${borderColor}` }}>
+              style={{ background: 'rgba(255,255,255,0.09)', color: textMuted, border: `1px solid ${borderColor}` }}>
               {p}
             </button>
           ))}
@@ -274,7 +274,7 @@ export default function AIChatPage() {
 
           {/* Text input */}
           <div className="flex-1 flex items-center rounded-2xl px-3"
-            style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${borderColor}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+            style={{ background: 'rgba(255,255,255,0.09)', border: `1px solid ${borderColor}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
             <input value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
               placeholder="Frag mich alles zur Türkei-Reise..."

@@ -4,7 +4,7 @@ import { Map, AlertTriangle, Fuel, Bot, Users, CheckSquare, ChevronRight, Star, 
 import SilaLogo from '../components/SilaLogo'
 
 const glass = {
-  background: 'rgba(255,255,255,0.05)',
+  background: 'rgba(255,255,255,0.09)',
   border: '1px solid rgba(255,255,255,0.1)',
   backdropFilter: 'blur(20px) saturate(180%)',
   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -67,7 +67,7 @@ export default function LandingPage({ onStart }) {
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
           className="text-center py-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
             <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>12.4K Fahrer aktiv</span>
           </div>
@@ -125,7 +125,7 @@ export default function LandingPage({ onStart }) {
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 mb-2">
                   {[['2.150 km', 'Distanz'], ['~22h', 'Fahrzeit'], ['186 €', 'Sprit'], ['244 €', 'Gesamt']].map(([v, l]) => (
-                    <div key={l} className="rounded-xl p-2 text-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <div key={l} className="rounded-xl p-2 text-center" style={{ background: 'rgba(255,255,255,0.09)' }}>
                       <div className="text-[10px] font-black" style={{ color: '#f5f5f5' }}>{v}</div>
                       <div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{l}</div>
                     </div>

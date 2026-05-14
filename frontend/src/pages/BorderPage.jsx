@@ -5,7 +5,7 @@ import BorderCard from '../components/BorderCard'
 import { SkeletonList } from '../components/LoadingSkeleton'
 
 const glass = {
-  background: 'rgba(255,255,255,0.05)',
+  background: 'rgba(255,255,255,0.09)',
   border: '1px solid rgba(255,255,255,0.1)',
   backdropFilter: 'blur(20px) saturate(180%)',
   WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -220,7 +220,7 @@ export default function BorderPage() {
               <textarea value={reportText} onChange={e => setReportText(e.target.value)}
                 placeholder="Wartezeit, Spur-Infos, Besonderheiten..."
                 rows={3} className="w-full rounded-2xl p-3 text-sm mb-3 resize-none outline-none"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: textMain, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }} />
+                style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }} />
 
               {reportPhotoPreview && (
                 <div className="relative mb-3">
@@ -284,7 +284,7 @@ export default function BorderPage() {
                 <input value={newName} onChange={e => setNewName(e.target.value)}
                   placeholder="z.B. Kapıkule, Horgoš..."
                   className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
+                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
               </div>
 
               <div className="mb-3">
@@ -292,7 +292,7 @@ export default function BorderPage() {
                 <input value={newCountry} onChange={e => setNewCountry(e.target.value)}
                   placeholder="z.B. TR 🇹🇷 / BG 🇧🇬"
                   className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
+                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
               </div>
 
               <div className="text-xs font-bold mb-2 tracking-widest" style={{ color: textMuted }}>AKTUELLER STATUS</div>
@@ -316,7 +316,7 @@ export default function BorderPage() {
                 <textarea value={newText} onChange={e => setNewText(e.target.value)}
                   placeholder="Was siehst du gerade an der Grenze?"
                   rows={2} className="w-full rounded-2xl p-3 text-sm resize-none outline-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
+                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
               </div>
 
               <motion.button whileTap={{ scale: 0.97 }} onClick={submitCreate}

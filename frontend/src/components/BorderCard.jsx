@@ -14,7 +14,7 @@ export default function BorderCard({ border, onReport }) {
     <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
       className="rounded-3xl p-4"
       style={{
-        background: 'rgba(255,255,255,0.05)',
+        background: 'rgba(255,255,255,0.09)',
         border: `1px solid ${status.glow.replace('0.15', '0.25')}`,
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
