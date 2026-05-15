@@ -20,28 +20,32 @@ const STATIC_PRICES = {
 // Tankerkönig: live DE Preise — günstigste Diesel-Stationen nahe Nutzern
 // Nutzt nur 1 Request (Rate Limit: 1/min) — Zentrum Deutschland, 25km Radius
 const tkCache = {}
-const TK_TTL = 5 * 60 * 1000 // 5min cache — Tankerkönig rate limit: 1 req/min
+const tkPending = {}
+const TK_TTL = 5 * 60 * 1000
 
 async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
   lat = parseFloat(lat); lng = parseFloat(lng)
-  // Round to 0.1° (~7km grid) — users in same city share one cache entry → fewer API calls
   const cacheKey = `${lat.toFixed(1)}_${lng.toFixed(1)}`
   const now = Date.now()
-  if (tkCache[cacheKey] && now - tkCache[cacheKey].fetchedAt < TK_TTL) {
+
+  // Cache hit — alle User bekommen sofort die gecachte Antwort
+  if (tkCache[cacheKey] && now - tkCache[cacheKey].fetchedAt < TK_TTL)
     return tkCache[cacheKey].data
+
+  // Request läuft bereits — alle weiteren User warten auf dasselbe Ergebnis
+  if (tkPending[cacheKey]) return tkPending[cacheKey]
+
+  const parseP = v => {
+    const n = parseFloat(String(v).replace(',', '.'))
+    return isNaN(n) || n <= 0 ? null : n
   }
-  try {
-    const res = await axios.get(
-      `https://creativecommons.tankerkoenig.de/json/list.php?lat=${lat}&lng=${lng}&rad=${rad}&sort=dist&type=all&apikey=${apiKey}`,
-      { timeout: 8000 }
-    )
+
+  // Erster User triggert den Request, alle anderen hängen sich dran
+  tkPending[cacheKey] = axios.get(
+    `https://creativecommons.tankerkoenig.de/json/list.php?lat=${lat}&lng=${lng}&rad=${rad}&sort=dist&type=all&apikey=${apiKey}`,
+    { timeout: 8000 }
+  ).then(res => {
     if (!res.data.ok || !res.data.stations?.length) return null
-
-    const parseP = v => {
-      const n = parseFloat(String(v).replace(',', '.'))
-      return isNaN(n) || n <= 0 ? null : n
-    }
-
     const data = res.data.stations
       .filter(s => s.diesel || s.e5)
       .sort((a, b) => (parseP(a.diesel) || 99) - (parseP(b.diesel) || 99))
@@ -59,10 +63,12 @@ async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
         lat: s.lat,
         lng: s.lng,
       }))
-
-    tkCache[cacheKey] = { data, fetchedAt: now }
+    tkCache[cacheKey] = { data, fetchedAt: Date.now() }
     return data
-  } catch { return tkCache[cacheKey]?.data || null }
+  }).catch(() => tkCache[cacheKey]?.data || null)
+   .finally(() => { delete tkPending[cacheKey] })
+
+  return tkPending[cacheKey]
 }
 
 // Frankreich: offizielle Regierungs-API, kostenlos, alle 10 Min aktualisiert
