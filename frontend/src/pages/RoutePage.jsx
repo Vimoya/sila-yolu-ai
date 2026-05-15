@@ -27,6 +27,9 @@ export default function RoutePage() {
   const [result, setResult] = useState(routeResult?.routes ? routeResult : null)
   const [error, setError] = useState(null)
   const [selectedKey, setSelectedKey] = useState(selectedRouteKey || 'austria_hungary')
+  const [aiTips, setAiTips] = useState(null)
+  const [aiTankStops, setAiTankStops] = useState(null)
+  const [tipsLoading, setTipsLoading] = useState(false)
 
   const startRef = useRef(null)
   const destRef = useRef(null)
@@ -171,10 +174,6 @@ export default function RoutePage() {
     }
     setCalculating(false)
   }
-
-  const [aiTips, setAiTips] = useState(null)
-  const [aiTankStops, setAiTankStops] = useState(null)
-  const [tipsLoading, setTipsLoading] = useState(false)
 
   async function fetchAiTips(route) {
     if (!route) return
