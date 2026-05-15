@@ -1,18 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Fuel, RefreshCw, Info, Timer, ChevronDown, X, Check,
+  Fuel, RefreshCw, Info, ChevronDown, X, Check,
   Camera, Mic, MicOff, Loader2, MapPin, Search, Navigation,
   TrendingDown, TrendingUp, Minus, Send,
 } from 'lucide-react'
-import { useStore } from '../store/useStore'
 import { SkeletonList } from '../components/LoadingSkeleton'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-const REFRESH_INTERVAL = 300
+const SEARCH_CACHE_TTL = 30 * 60 * 1000 // 30 Min localStorage cache für Suchergebnisse
+
+function lsGet(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const { data, ts } = JSON.parse(raw)
+    if (Date.now() - ts > SEARCH_CACHE_TTL) { localStorage.removeItem(key); return null }
+    return data
+  } catch { return null }
+}
+function lsSet(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })) } catch {}
+}
 
 const COUNTRY_TABS = [
-  { id: 'all', label: 'Alle', flag: '🌍' },
   { id: 'de', label: 'DE', flag: '🇩🇪' },
   { id: 'fr', label: 'FR', flag: '🇫🇷' },
   { id: 'at', label: 'AT', flag: '🇦🇹' },
@@ -175,6 +186,10 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
   async function searchCity(city) {
     setLoading(true); setError('')
     try {
+      const cacheKey = `fuel_search_${country}_${city.toLowerCase().trim()}`
+      const cached = lsGet(cacheKey)
+      if (cached) { onResult(cached.stations, cached.cityName); setLoading(false); return }
+
       const geo = await fetch(`${API_BASE}/api/fuel/geocode?q=${encodeURIComponent(city)}&country=${country}`).then(r => r.json())
       const place = Array.isArray(geo) ? geo[0] : null
       if (!place) { setError('Stadt nicht gefunden'); setLoading(false); return }
@@ -182,6 +197,7 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
       const cityName = display_name.split(',')[0]
       const data = await fetch(`${API_BASE}/api/fuel/nearby?lat=${lat}&lng=${lon}&country=${country}`).then(r => r.json())
       if (!data.stations?.length) { setError(`Keine Stationen nahe ${cityName}`); setLoading(false); return }
+      lsSet(cacheKey, { stations: data.stations, cityName })
       onResult(data.stations, cityName)
     } catch { setError('Suche fehlgeschlagen') }
     setLoading(false)
@@ -193,12 +209,17 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords
         try {
+          const cacheKey = `fuel_gps_${country}_${lat.toFixed(1)}_${lng.toFixed(1)}`
+          const cached = lsGet(cacheKey)
+          if (cached) { onResult(cached.stations, cached.cityName); setQuery(cached.cityName); setGpsLoading(false); return }
+
           const [geo, data] = await Promise.all([
             fetch(`${API_BASE}/api/fuel/geocode?lat=${lat}&lon=${lng}`).then(r => r.json()),
             fetch(`${API_BASE}/api/fuel/nearby?lat=${lat}&lng=${lng}&country=${country}`).then(r => r.json()),
           ])
           const city = geo?.address?.city || geo?.address?.town || geo?.address?.village || 'Dein Standort'
           if (!data.stations?.length) { setError('Keine Stationen in deiner Nähe'); setGpsLoading(false); return }
+          lsSet(cacheKey, { stations: data.stations, cityName: city })
           onResult(data.stations, city); setQuery(city)
         } catch { setError('Standortfehler') }
         setGpsLoading(false)
@@ -433,35 +454,38 @@ export default function FuelPage() {
   const [localCity, setLocalCity] = useState({})
   const [summary, setSummary] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeCountry, setActiveCountry] = useState('all')
+  const [activeCountry, setActiveCountry] = useState('de')
   const [source, setSource] = useState('')
   const [activeView, setActiveView] = useState('stations')
-  const [countdown, setCountdown] = useState(REFRESH_INTERVAL)
   const [showReport, setShowReport] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
-  const countdownRef = useRef(null)
-  const timerRef = useRef(null)
+  const lastDataRef = useRef(null)
 
-  function loadData() {
-    setLoading(true); setCountdown(REFRESH_INTERVAL)
-    Promise.all([
-      fetch(`${API_BASE}/api/fuel/route`).then(r => r.json()).catch(() => ({ stations: [] })),
-      fetch(`${API_BASE}/api/fuel/summary`).then(r => r.json()).catch(() => ({ summary: [] })),
-    ]).then(([rd, sd]) => {
-      setStations(rd.stations || []); setSummary(sd.summary || []); setSource(rd.source || ''); setLoading(false)
-    })
-  }
-
-  function startCountdown() {
-    clearInterval(countdownRef.current)
-    setCountdown(REFRESH_INTERVAL)
-    countdownRef.current = setInterval(() => setCountdown(p => p <= 1 ? REFRESH_INTERVAL : p - 1), 1000)
+  async function loadData(force = false) {
+    if (!force && loading === false) return // nicht nochmal laden wenn schon da
+    setLoading(true)
+    try {
+      const [rd, sd] = await Promise.all([
+        fetch(`${API_BASE}/api/fuel/route`).then(r => r.json()),
+        fetch(`${API_BASE}/api/fuel/summary`).then(r => r.json()),
+      ])
+      const newHash = JSON.stringify(rd.stations)
+      // Nur updaten wenn sich Preise wirklich geändert haben
+      if (newHash !== lastDataRef.current) {
+        lastDataRef.current = newHash
+        setStations(rd.stations || [])
+        setSummary(sd.summary || [])
+        setSource(rd.source || '')
+      }
+    } catch {}
+    setLoading(false)
   }
 
   useEffect(() => {
-    loadData(); startCountdown()
-    timerRef.current = setInterval(loadData, REFRESH_INTERVAL * 1000)
-    return () => { clearInterval(countdownRef.current); clearInterval(timerRef.current) }
+    loadData(true)
+    // Alle 10 Min prüfen ob Preise sich geändert haben — kein Countdown mehr
+    const t = setInterval(() => loadData(), 10 * 60 * 1000)
+    return () => clearInterval(t)
   }, [])
 
   const SEARCH_ONLY = ['de', 'fr']
@@ -476,8 +500,6 @@ export default function FuelPage() {
   const dieselPrices = displayStations.map(s => s.diesel).filter(Boolean)
   const avgPrice = dieselPrices.length ? (dieselPrices.reduce((a, b) => a + b) / dieselPrices.length).toFixed(3) : '—'
   const minPrice = dieselPrices.length ? Math.min(...dieselPrices).toFixed(3) : '—'
-  const countdownMin = Math.floor(countdown / 60)
-  const countdownSec = countdown % 60
 
   return (
     <div className="page-container" style={{ background: T.bg }}>
@@ -489,7 +511,7 @@ export default function FuelPage() {
             <h1 className="text-2xl font-black tracking-tight" style={{ color: T.text }}>Tankpreise</h1>
             <p className="text-xs mt-0.5" style={{ color: T.muted }}>Sıla Yolu · Live Preise</p>
           </div>
-          <motion.button whileTap={{ scale: 0.88 }} onClick={() => { loadData(); startCountdown() }}
+          <motion.button whileTap={{ scale: 0.88 }} onClick={() => loadData(true)}
             className="w-10 h-10 rounded-2xl flex items-center justify-center"
             style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.border}` }}>
             <RefreshCw size={15} style={{ color: T.mutedLight }} />
@@ -607,18 +629,6 @@ export default function FuelPage() {
               </div>
             )}
 
-            {/* Countdown */}
-            {!loading && (
-              <div className="mt-5 flex items-center gap-2">
-                <Timer size={10} style={{ color: T.muted }} />
-                <div className="flex-1 h-px rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  <motion.div className="h-full rounded-full" style={{ background: 'rgba(255,255,255,0.15)', width: `${((REFRESH_INTERVAL - countdown) / REFRESH_INTERVAL) * 100}%` }} />
-                </div>
-                <span className="text-[10px]" style={{ color: T.muted }}>
-                  {countdownMin}:{String(countdownSec).padStart(2, '0')}
-                </span>
-              </div>
-            )}
           </>
         )}
 
