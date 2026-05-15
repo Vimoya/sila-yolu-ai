@@ -42,10 +42,7 @@ const PAGES = {
 
 export default function App() {
   const { isDark, activeTab, user, setUser } = useStore()
-  const [showLanding, setShowLanding] = useState(() => {
-    const v = localStorage.getItem('sila_seen_landing')
-    return v !== 'v2' && v !== '1'
-  })
+  const [showLanding, setShowLanding] = useState(true)
   const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
@@ -64,7 +61,7 @@ export default function App() {
   if (showLanding) return (
     <div className="app-shell">
       <div style={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
-        <LandingPage onStart={() => { localStorage.setItem('sila_seen_landing', 'v2'); setShowLanding(false) }} />
+        <LandingPage onStart={() => setShowLanding(false)} />
       </div>
       <Toaster position="top-center" />
     </div>

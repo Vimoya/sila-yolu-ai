@@ -156,7 +156,7 @@ export default function RoutePage() {
       const r = await fetch(`${API}/api/route/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start, dest, consumption, fuelPrice, avoidToll }),
+        body: JSON.stringify({ start, dest, consumption, fuelPrice, avoidToll, fuel }),
       })
       const data = await r.json()
       if (!r.ok || !data.routes) throw new Error(data.error || `HTTP ${r.status}`)
@@ -173,20 +173,23 @@ export default function RoutePage() {
   }
 
   const [aiTips, setAiTips] = useState(null)
+  const [aiTankStops, setAiTankStops] = useState(null)
   const [tipsLoading, setTipsLoading] = useState(false)
 
   async function fetchAiTips(route) {
     if (!route) return
     setTipsLoading(true)
     setAiTips(null)
+    setAiTankStops(null)
     try {
       const r = await fetch(`${API}/api/route/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start, dest, routeKey: route.key, consumption, fuelPrice, avoidToll }),
+        body: JSON.stringify({ start, dest, routeKey: route.key, consumption, fuelPrice, avoidToll, fuel }),
       })
       const data = await r.json()
       setAiTips(data.aiTips)
+      setAiTankStops(data.aiTankStops)
     } catch {}
     setTipsLoading(false)
   }
@@ -194,6 +197,7 @@ export default function RoutePage() {
   function selectRoute(key) {
     setSelectedKey(key)
     setRouteSettings({ selectedRouteKey: key })
+    setAiTankStops(null)
     if (result) {
       const r = result.routes.find(r => r.key === key)
       setCurrentRoute({ ...r, start, dest })
@@ -426,20 +430,39 @@ export default function RoutePage() {
                   </div>
                 )}
 
-                {/* Tank stops — route-specific from backend */}
-                {selectedResult?.tankStops?.length > 0 && (
+                {/* Tank stops — KI optimized when available */}
+                {(aiTankStops?.length > 0 || selectedResult?.tankStops?.length > 0) && (
                   <div className="rounded-2xl p-4 mb-4" style={glass}>
-                    <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>TANKSTOPPS</div>
-                    {selectedResult.tankStops.map((s, i, arr) => (
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-xs font-bold tracking-widest" style={{ color: textMuted }}>TANKSTOPPS</div>
+                      {aiTankStops?.length > 0 && !tipsLoading && (
+                        <div className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>KI-optimiert</div>
+                      )}
+                      {tipsLoading && (
+                        <div className="text-[10px]" style={{ color: textMuted }}>KI berechnet…</div>
+                      )}
+                    </div>
+                    {(aiTankStops?.length > 0 ? aiTankStops : selectedResult.tankStops).map((s, i, arr) => (
                       <div key={i} className="flex items-start gap-3 py-2.5"
                         style={{ borderBottom: i < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
                         <span className="text-lg mt-0.5">{s.flag}</span>
                         <div className="flex-1">
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-semibold" style={{ color: textMain }}>{s.city}</span>
-                            <span className="text-xs" style={{ color: textMuted }}>~{s.km.toLocaleString()} km</span>
+                            <div className="flex items-center gap-2">
+                              {s.price != null && (
+                                <span className="text-xs font-black" style={{ color: '#4ade80' }}>{s.price.toFixed(2)} €/L</span>
+                              )}
+                              <span className="text-xs" style={{ color: textMuted }}>~{s.km?.toLocaleString()} km</span>
+                            </div>
                           </div>
-                          <div className="text-xs mt-0.5" style={{ color: s.tip ? '#4ade80' : textMuted }}>{s.note}</div>
+                          {s.action && (
+                            <div className="text-xs font-semibold mt-0.5" style={{ color: '#fbbf24' }}>{s.action}</div>
+                          )}
+                          <div className="text-xs mt-0.5" style={{ color: s.tip ? '#4ade80' : textMuted }}>{s.reason || s.note}</div>
+                          {s.liters && (
+                            <div className="text-xs mt-0.5" style={{ color: 'rgba(96,165,250,0.8)' }}>Empfehlung: {s.liters}L tanken</div>
+                          )}
                         </div>
                       </div>
                     ))}

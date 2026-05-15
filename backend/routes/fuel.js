@@ -2,6 +2,20 @@ import { Router } from 'express'
 import axios from 'axios'
 import OpenAI from 'openai'
 import { getFueloPrices, getAllFueloPrices, getAllFueloStations } from '../scraper/fuelo.js'
+import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const PERSIST_DIR = join(__dirname, '../.cache')
+try { mkdirSync(PERSIST_DIR, { recursive: true }) } catch {}
+
+function diskRead(key) {
+  try { return JSON.parse(readFileSync(join(PERSIST_DIR, `${key}.json`), 'utf8')) } catch { return null }
+}
+function diskWrite(key, data) {
+  try { writeFileSync(join(PERSIST_DIR, `${key}.json`), JSON.stringify(data)) } catch {}
+}
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -17,22 +31,28 @@ const STATIC_PRICES = {
   gr: { diesel: 1.730, benzin: 1.910, trend: 'stable', note: 'Günstiger als DE/AT' },
 }
 
-// Tankerkönig: live DE Preise — günstigste Diesel-Stationen nahe Nutzern
-// Nutzt nur 1 Request (Rate Limit: 1/min) — Zentrum Deutschland, 25km Radius
-const tkCache = {}
+// Tankerkönig: live DE Preise — persistent gecacht, überlebt Server-Restarts
+const tkMemCache = {}
 const tkPending = {}
 const TK_TTL = 5 * 60 * 1000
 
 async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
   lat = parseFloat(lat); lng = parseFloat(lng)
-  const cacheKey = `${lat.toFixed(1)}_${lng.toFixed(1)}`
+  const cacheKey = `tk_${lat.toFixed(1)}_${lng.toFixed(1)}`
   const now = Date.now()
 
-  // Cache hit — alle User bekommen sofort die gecachte Antwort
-  if (tkCache[cacheKey] && now - tkCache[cacheKey].fetchedAt < TK_TTL)
-    return tkCache[cacheKey].data
+  // 1. Memory cache
+  if (tkMemCache[cacheKey] && now - tkMemCache[cacheKey].fetchedAt < TK_TTL)
+    return tkMemCache[cacheKey].data
 
-  // Request läuft bereits — alle weiteren User warten auf dasselbe Ergebnis
+  // 2. Disk cache — überlebt Restarts, max 2h alt
+  const disk = diskRead(cacheKey)
+  if (disk && now - disk.fetchedAt < 2 * 60 * 60 * 1000) {
+    tkMemCache[cacheKey] = disk
+    return disk.data
+  }
+
+  // 3. Request läuft bereits — warten
   if (tkPending[cacheKey]) return tkPending[cacheKey]
 
   const parseP = v => {
@@ -40,12 +60,11 @@ async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
     return isNaN(n) || n <= 0 ? null : n
   }
 
-  // Erster User triggert den Request, alle anderen hängen sich dran
   tkPending[cacheKey] = axios.get(
     `https://creativecommons.tankerkoenig.de/json/list.php?lat=${lat}&lng=${lng}&rad=${rad}&sort=dist&type=all&apikey=${apiKey}`,
     { timeout: 8000 }
   ).then(res => {
-    if (!res.data.ok || !res.data.stations?.length) return null
+    if (!res.data.ok || !res.data.stations?.length) return disk?.data || null
     const data = res.data.stations
       .filter(s => s.diesel || s.e5)
       .sort((a, b) => (parseP(a.diesel) || 99) - (parseP(b.diesel) || 99))
@@ -63,10 +82,14 @@ async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
         lat: s.lat,
         lng: s.lng,
       }))
-    tkCache[cacheKey] = { data, fetchedAt: Date.now() }
+    const entry = { data, fetchedAt: Date.now() }
+    tkMemCache[cacheKey] = entry
+    diskWrite(cacheKey, entry)
     return data
-  }).catch(() => tkCache[cacheKey]?.data || null)
-   .finally(() => { delete tkPending[cacheKey] })
+  }).catch(() => {
+    // API gesperrt — Disk-Cache zurückgeben egal wie alt
+    return disk?.data || tkMemCache[cacheKey]?.data || null
+  }).finally(() => { delete tkPending[cacheKey] })
 
   return tkPending[cacheKey]
 }
@@ -257,13 +280,7 @@ router.get('/route', async (req, res) => {
     routeCache.lastChanged = Date.now()
   }
 
-  // Client schickt seinen lastChanged mit — wenn gleich, 304 (keine Daten nötig)
-  const clientTs = parseInt(req.headers['if-none-match'] || '0')
-  if (clientTs && clientTs >= routeCache.lastChanged) {
-    return res.status(304).end()
-  }
-
-  res.set('ETag', String(routeCache.lastChanged))
+  res.set('Cache-Control', 'no-store')
   res.json({ stations: routeCache.stations, source: sourceStr, lastChanged: routeCache.lastChanged })
 })
 
@@ -407,6 +424,7 @@ router.get('/summary', async (req, res) => {
     frSource = 'prix-carburants.gouv.fr live 🟢'
   }
 
+  res.set('Cache-Control', 'no-store')
   res.json({
     summary: [
       { country: 'Deutschland', flag: '🇩🇪', code: 'de', diesel: deDiesel, benzin: deBenzin, trend: 'stable', source: deSource },
