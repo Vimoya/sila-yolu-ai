@@ -49,7 +49,7 @@ async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
     const data = res.data.stations
       .filter(s => s.diesel || s.e5)
       .sort((a, b) => (parseP(a.diesel) || 99) - (parseP(b.diesel) || 99))
-      .slice(0, 5)
+      .slice(0, 10)
       .map((s, i) => ({
         id: `de_tk_${i}`,
         name: `${s.brand || s.name}`.trim(),
