@@ -459,32 +459,42 @@ export default function FuelPage() {
   const [activeView, setActiveView] = useState('stations')
   const [showReport, setShowReport] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
-  const lastDataRef = useRef(null)
+  const lastChangedRef = useRef(localStorage.getItem('fuel_lastChanged') || '0')
 
   async function loadData(force = false) {
-    if (!force && loading === false) return // nicht nochmal laden wenn schon da
-    setLoading(true)
+    if (force) setLoading(true)
     try {
-      const [rd, sd] = await Promise.all([
-        fetch(`${API_BASE}/api/fuel/route`).then(r => r.json()),
-        fetch(`${API_BASE}/api/fuel/summary`).then(r => r.json()),
-      ])
-      const newHash = JSON.stringify(rd.stations)
-      // Nur updaten wenn sich Preise wirklich geändert haben
-      if (newHash !== lastDataRef.current) {
-        lastDataRef.current = newHash
-        setStations(rd.stations || [])
-        setSummary(sd.summary || [])
-        setSource(rd.source || '')
+      const routeRes = await fetch(`${API_BASE}/api/fuel/route`, {
+        headers: { 'If-None-Match': lastChangedRef.current },
+      })
+
+      // 304 = Preise unverändert — nichts tun
+      if (routeRes.status === 304) { setLoading(false); return }
+
+      const rd = await routeRes.json()
+      // Neuen Timestamp speichern
+      if (rd.lastChanged) {
+        lastChangedRef.current = String(rd.lastChanged)
+        localStorage.setItem('fuel_lastChanged', lastChangedRef.current)
       }
+      setStations(rd.stations || [])
+      setSource(rd.source || '')
+
+      // Summary nur beim ersten Laden oder wenn Route sich geändert hat
+      const sd = await fetch(`${API_BASE}/api/fuel/summary`).then(r => r.json())
+      setSummary(sd.summary || [])
     } catch {}
     setLoading(false)
   }
 
   useEffect(() => {
     loadData(true)
-    // Alle 10 Min prüfen ob Preise sich geändert haben — kein Countdown mehr
-    const t = setInterval(() => loadData(), 10 * 60 * 1000)
+    const now = new Date()
+    const hour = now.getHours()
+    // Zwischen 6-22 Uhr alle 30 Min prüfen, nachts gar nicht
+    const interval = (hour >= 6 && hour < 22) ? 30 * 60 * 1000 : null
+    if (!interval) return
+    const t = setInterval(() => loadData(), interval)
     return () => clearInterval(t)
   }, [])
 

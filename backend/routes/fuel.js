@@ -164,6 +164,9 @@ function staticStations() {
   ]
 }
 
+// Track when prices actually changed — only update timestamp on real price change
+const routeCache = { stations: null, hash: null, lastChanged: null }
+
 router.get('/route', async (req, res) => {
   const tkKey = process.env.TANKERKOENIG_API_KEY
   const sources = []
@@ -244,7 +247,24 @@ router.get('/route', async (req, res) => {
   if (fueloUsed) sources.push('fuelo.net (HU/RS/BG/TR/GR)')
 
   const sourceStr = sources.length ? sources.join(' + ') : 'Statische Preise (Fallback)'
-  res.json({ stations, source: sourceStr, lastUpdated: new Date().toISOString() })
+
+  // Hash der Preise — nur Zahlen, keine IDs/Timestamps
+  const priceHash = stations.map(s => `${s.name}${s.diesel}${s.benzin}`).join('|')
+
+  if (priceHash !== routeCache.hash) {
+    routeCache.hash = priceHash
+    routeCache.stations = stations
+    routeCache.lastChanged = Date.now()
+  }
+
+  // Client schickt seinen lastChanged mit — wenn gleich, 304 (keine Daten nötig)
+  const clientTs = parseInt(req.headers['if-none-match'] || '0')
+  if (clientTs && clientTs >= routeCache.lastChanged) {
+    return res.status(304).end()
+  }
+
+  res.set('ETag', String(routeCache.lastChanged))
+  res.json({ stations: routeCache.stations, source: sourceStr, lastChanged: routeCache.lastChanged })
 })
 
 router.get('/geocode', async (req, res) => {
