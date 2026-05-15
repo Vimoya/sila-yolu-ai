@@ -24,7 +24,8 @@ const TK_TTL = 5 * 60 * 1000 // 5min cache — Tankerkönig rate limit: 1 req/mi
 
 async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
   lat = parseFloat(lat); lng = parseFloat(lng)
-  const cacheKey = `${lat.toFixed(2)}_${lng.toFixed(2)}`
+  // Round to 0.1° (~7km grid) — users in same city share one cache entry → fewer API calls
+  const cacheKey = `${lat.toFixed(1)}_${lng.toFixed(1)}`
   const now = Date.now()
   if (tkCache[cacheKey] && now - tkCache[cacheKey].fetchedAt < TK_TTL) {
     return tkCache[cacheKey].data
