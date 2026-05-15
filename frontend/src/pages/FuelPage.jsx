@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Fuel, TrendingDown, TrendingUp, Minus, RefreshCw, Info, Timer,
-  ChevronDown, X, Check, Camera, Mic, MicOff, Loader2,
-  MapPin, Search, Navigation, ChevronRight, Send,
+  Fuel, RefreshCw, Info, Timer, ChevronDown, X, Check,
+  Camera, Mic, MicOff, Loader2, MapPin, Search, Navigation,
+  TrendingDown, TrendingUp, Minus, Send,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { SkeletonList } from '../components/LoadingSkeleton'
@@ -27,86 +27,136 @@ const AVG_COUNTRIES = ['fr', 'hu', 'rs', 'bg', 'tr', 'gr']
 const COUNTRY_NAMES = { de: 'Deutschland', fr: 'Frankreich', at: 'Österreich', hu: 'Ungarn', rs: 'Serbien', bg: 'Bulgarien', tr: 'Türkei', gr: 'Griechenland' }
 const COUNTRY_FLAGS = { de: '🇩🇪', fr: '🇫🇷', at: '🇦🇹', hu: '🇭🇺', rs: '🇷🇸', bg: '🇧🇬', tr: '🇹🇷', gr: '🇬🇷' }
 
-// Design tokens
 const T = {
-  bg: '#09090b',
-  card: 'rgba(255,255,255,0.04)',
-  cardBorder: 'rgba(255,255,255,0.08)',
-  glass: 'rgba(255,255,255,0.06)',
-  glassBorder: 'rgba(255,255,255,0.1)',
-  text: '#f4f4f5',
-  muted: '#71717a',
-  accent: '#e8192c',
+  bg: '#0a0a0f',
+  card: 'rgba(255,255,255,0.035)',
+  cardHover: 'rgba(255,255,255,0.06)',
+  border: 'rgba(255,255,255,0.07)',
+  borderStrong: 'rgba(255,255,255,0.12)',
+  text: '#f1f1f3',
+  muted: '#6b6b7a',
+  mutedLight: '#9a9aaa',
   green: '#22c55e',
+  greenBg: 'rgba(34,197,94,0.1)',
+  greenBorder: 'rgba(34,197,94,0.2)',
   amber: '#f59e0b',
-  blue: '#3b82f6',
-}
-
-const glass = {
-  background: T.glass,
-  border: `1px solid ${T.glassBorder}`,
-  backdropFilter: 'blur(12px)',
+  amberBg: 'rgba(245,158,11,0.08)',
+  amberBorder: 'rgba(245,158,11,0.18)',
+  red: '#ef4444',
+  redBg: 'rgba(239,68,68,0.08)',
+  redBorder: 'rgba(239,68,68,0.18)',
+  blue: '#60a5fa',
+  accent: '#e8192c',
 }
 
 function priceColor(p) {
   if (!p) return T.muted
-  return p < 1.5 ? T.green : p < 1.75 ? T.amber : '#ef4444'
+  if (p < 1.50) return T.green
+  if (p < 1.75) return T.amber
+  return T.red
 }
 
-// ── Station Card ─────────────────────────────────────────────────────────────
-function StationCard({ station, expanded, onExpand }) {
+function priceBg(p) {
+  if (!p) return 'rgba(255,255,255,0.04)'
+  if (p < 1.50) return T.greenBg
+  if (p < 1.75) return T.amberBg
+  return T.redBg
+}
+
+function priceBorder(p) {
+  if (!p) return T.border
+  if (p < 1.50) return T.greenBorder
+  if (p < 1.75) return T.amberBorder
+  return T.redBorder
+}
+
+// ── Station Card ──────────────────────────────────────────────────────────────
+function StationCard({ station, expanded, onExpand, rank }) {
   const isLive = station.updated?.includes('🟢')
+  const d = station.diesel
+  const b = station.benzin
 
   return (
-    <motion.div layout className="rounded-2xl overflow-hidden"
-      style={{ background: T.card, border: `1px solid ${station.cheap ? 'rgba(34,197,94,0.2)' : T.cardBorder}` }}>
-      <button className="w-full text-left px-4 py-3.5" onClick={onExpand}>
-        <div className="flex items-center gap-2">
-          {/* Diesel + Benzin pills */}
-          <div className="flex gap-1.5 flex-shrink-0">
-            <div className="w-16 h-12 rounded-xl flex flex-col items-center justify-center"
-              style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.15)' }}>
-              <span className="text-[9px] font-bold" style={{ color: T.amber }}>DSL</span>
-              <span className="font-black text-sm leading-tight" style={{ color: station.diesel ? priceColor(station.diesel) : T.muted }}>
-                {station.diesel != null ? station.diesel.toFixed(3) : '—'}
-              </span>
-            </div>
-            <div className="w-16 h-12 rounded-xl flex flex-col items-center justify-center"
-              style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)' }}>
-              <span className="text-[9px] font-bold" style={{ color: T.blue }}>BNZ</span>
-              <span className="font-black text-sm leading-tight" style={{ color: station.benzin ? priceColor(station.benzin) : T.muted }}>
-                {station.benzin != null ? station.benzin.toFixed(3) : '—'}
-              </span>
-            </div>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: rank * 0.04 }}
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: T.card,
+        border: `1px solid ${station.cheap ? T.greenBorder : T.border}`,
+      }}>
+
+      <button className="w-full text-left p-4" onClick={onExpand}>
+        <div className="flex items-center gap-3">
+
+          {/* Rank */}
+          <div className="w-6 flex-shrink-0 text-center">
+            <span className="text-xs font-bold" style={{ color: station.cheap ? T.green : T.muted }}>
+              {station.cheap ? '★' : `#${rank + 1}`}
+            </span>
           </div>
 
-          {/* Info */}
+          {/* Station info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-sm truncate" style={{ color: T.text }}>{station.name}</span>
-              {isLive && <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: 'rgba(34,197,94,0.12)', color: T.green }}>LIVE</span>}
-              {station.cheap && <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: 'rgba(34,197,94,0.1)', color: T.green }}>✓ GÜNSTIG</span>}
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-bold text-sm" style={{ color: T.text }}>{station.name}</span>
+              {isLive
+                ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold tracking-wide" style={{ background: T.greenBg, color: T.green, border: `1px solid ${T.greenBorder}` }}>● LIVE</span>
+                : <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(255,255,255,0.05)', color: T.muted }}>täglich</span>
+              }
             </div>
-            <div className="flex items-center gap-1 mt-0.5" style={{ color: T.muted }}>
+            <div className="flex items-center gap-1" style={{ color: T.muted }}>
               <MapPin size={9} className="flex-shrink-0" />
-              <span className="text-xs truncate">{station.address}</span>
+              <span className="text-[11px] truncate">{station.address}</span>
             </div>
           </div>
 
-          <motion.div animate={{ rotate: expanded ? 90 : 0 }} transition={{ duration: 0.18 }} className="flex-shrink-0">
-            <ChevronRight size={14} style={{ color: T.muted }} />
-          </motion.div>
+          {/* Prices */}
+          <div className="flex gap-2 flex-shrink-0">
+            <div className="text-right">
+              <div className="text-[9px] font-bold mb-0.5" style={{ color: T.muted }}>DSL</div>
+              <div className="font-black text-base leading-none" style={{ color: d ? priceColor(d) : T.muted }}>
+                {d != null ? d.toFixed(3) : '—'}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[9px] font-bold mb-0.5" style={{ color: T.muted }}>BNZ</div>
+              <div className="font-black text-base leading-none" style={{ color: b ? priceColor(b) : T.muted }}>
+                {b != null ? b.toFixed(3) : '—'}
+              </div>
+            </div>
+          </div>
         </div>
       </button>
 
       <AnimatePresence>
-        {expanded && station.note && (
+        {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
-            <div className="px-4 pb-3 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <p className="text-xs px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', color: T.muted }}>
-                {station.note}
-              </p>
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+            <div className="px-4 pb-4" style={{ borderTop: `1px solid ${T.border}` }}>
+              <div className="flex gap-2 mt-3">
+                {d != null && (
+                  <div className="flex-1 rounded-xl p-3 text-center" style={{ background: priceBg(d), border: `1px solid ${priceBorder(d)}` }}>
+                    <div className="text-[9px] font-bold tracking-widest mb-1" style={{ color: priceColor(d) }}>DIESEL</div>
+                    <div className="font-black text-xl" style={{ color: priceColor(d) }}>{d.toFixed(3)}</div>
+                    <div className="text-[9px] mt-0.5" style={{ color: T.muted }}>€ / Liter</div>
+                  </div>
+                )}
+                {b != null && (
+                  <div className="flex-1 rounded-xl p-3 text-center" style={{ background: priceBg(b), border: `1px solid ${priceBorder(b)}` }}>
+                    <div className="text-[9px] font-bold tracking-widest mb-1" style={{ color: priceColor(b) }}>BENZIN</div>
+                    <div className="font-black text-xl" style={{ color: priceColor(b) }}>{b.toFixed(3)}</div>
+                    <div className="text-[9px] mt-0.5" style={{ color: T.muted }}>€ / Liter</div>
+                  </div>
+                )}
+              </div>
+              {station.note && (
+                <p className="text-[11px] mt-2.5 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', color: T.mutedLight }}>
+                  💡 {station.note}
+                </p>
+              )}
             </div>
           </motion.div>
         )}
@@ -131,10 +181,7 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
       const { lat, lon, display_name } = place
       const cityName = display_name.split(',')[0]
       const data = await fetch(`${API_BASE}/api/fuel/nearby?lat=${lat}&lng=${lon}&country=${country}`).then(r => r.json())
-      if (!data.stations?.length) {
-        setError(`Keine Stationen nahe ${cityName} gefunden`)
-        setLoading(false); return
-      }
+      if (!data.stations?.length) { setError(`Keine Stationen nahe ${cityName}`); setLoading(false); return }
       onResult(data.stations, cityName)
     } catch { setError('Suche fehlgeschlagen') }
     setLoading(false)
@@ -151,42 +198,50 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
             fetch(`${API_BASE}/api/fuel/nearby?lat=${lat}&lng=${lng}&country=${country}`).then(r => r.json()),
           ])
           const city = geo?.address?.city || geo?.address?.town || geo?.address?.village || 'Dein Standort'
-          if (!data.stations?.length) {
-            setError('Keine Stationen in deiner Nähe gefunden')
-            setGpsLoading(false); return
-          }
+          if (!data.stations?.length) { setError('Keine Stationen in deiner Nähe'); setGpsLoading(false); return }
           onResult(data.stations, city); setQuery(city)
         } catch { setError('Standortfehler') }
         setGpsLoading(false)
       },
-      (err) => { setError(err.code === 1 ? 'GPS verweigert – bitte in den Browser-Einstellungen erlauben' : 'Standort nicht verfügbar'); setGpsLoading(false) },
+      (err) => { setError(err.code === 1 ? 'GPS verweigert – in Browser-Einstellungen erlauben' : 'Standort nicht verfügbar'); setGpsLoading(false) },
       { timeout: 15000, maximumAge: 60000, enableHighAccuracy: false }
     )
   }
 
   return (
-    <div className="mb-3">
-      <div className="flex gap-1.5">
-        <div className="flex-1 flex items-center rounded-xl px-3 gap-2 min-w-0" style={glass}>
+    <div>
+      <div className="flex gap-2">
+        <div className="flex-1 flex items-center rounded-2xl px-3.5 gap-2"
+          style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.borderStrong}` }}>
           <Search size={13} style={{ color: T.muted, flexShrink: 0 }} />
           <input value={query} onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && query.trim() && searchCity(query.trim())}
             placeholder={placeholder}
-            className="flex-1 py-2.5 text-sm bg-transparent outline-none min-w-0"
+            className="flex-1 py-3 text-sm bg-transparent outline-none min-w-0"
             style={{ color: T.text }} />
           {loading && <Loader2 size={12} className="animate-spin flex-shrink-0" style={{ color: T.muted }} />}
         </div>
         <motion.button whileTap={{ scale: 0.92 }} onClick={useGPS} disabled={gpsLoading}
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={glass}>
-          {gpsLoading ? <Loader2 size={13} className="animate-spin" style={{ color: T.green }} /> : <Navigation size={13} style={{ color: T.green }} />}
+          className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: T.greenBg, border: `1px solid ${T.greenBorder}` }}>
+          {gpsLoading
+            ? <Loader2 size={14} className="animate-spin" style={{ color: T.green }} />
+            : <Navigation size={14} style={{ color: T.green }} />}
         </motion.button>
-        <motion.button whileTap={{ scale: 0.92 }} onClick={() => query.trim() && searchCity(query.trim())} disabled={loading || !query.trim()}
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ ...glass, borderColor: query.trim() ? T.accent : T.glassBorder }}>
-          <Search size={13} style={{ color: query.trim() ? T.accent : T.muted }} />
+        <motion.button whileTap={{ scale: 0.92 }}
+          onClick={() => query.trim() && searchCity(query.trim())}
+          disabled={loading || !query.trim()}
+          className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: query.trim() ? T.amberBg : 'rgba(255,255,255,0.04)', border: `1px solid ${query.trim() ? T.amberBorder : T.border}` }}>
+          <Send size={14} style={{ color: query.trim() ? T.amber : T.muted }} />
         </motion.button>
       </div>
-      {error && <p className="text-[11px] mt-1.5 px-1" style={{ color: '#ef4444' }}>{error}</p>}
+      {error && (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="text-[11px] mt-2 px-1" style={{ color: T.red }}>
+          ⚠ {error}
+        </motion.p>
+      )}
     </div>
   )
 }
@@ -250,46 +305,47 @@ function ReportModal({ onClose }) {
     setLoading(false)
   }
 
-  const inp = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.cardBorder}`, borderRadius: 12, color: T.text, padding: '10px 14px', fontSize: 14, width: '100%', outline: 'none' }
+  const inp = {
+    background: 'rgba(255,255,255,0.04)',
+    border: `1px solid ${T.border}`,
+    borderRadius: 14,
+    color: T.text,
+    padding: '12px 16px',
+    fontSize: 14,
+    width: '100%',
+    outline: 'none',
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}>
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 380, damping: 38 }}
         onClick={e => e.stopPropagation()}
         className="w-full rounded-t-3xl flex flex-col"
-        style={{
-          background: 'rgba(15,15,18,0.97)',
-          border: '1px solid rgba(255,255,255,0.09)',
-          borderBottom: 'none',
-          maxWidth: 480,
-          maxHeight: '88dvh',
-        }}>
+        style={{ background: '#111116', border: `1px solid ${T.borderStrong}`, borderBottom: 'none', maxWidth: 480, maxHeight: '88dvh' }}>
 
-        {/* Fixed header */}
         <div className="flex-shrink-0 px-5 pt-4 pb-3">
-          <div className="w-8 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(255,255,255,0.15)' }} />
+          <div className="w-8 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(255,255,255,0.12)' }} />
           <div className="flex items-center justify-between">
             <div>
               <div className="font-black text-base" style={{ color: T.text }}>⛽ Preis melden</div>
-              <div className="text-xs mt-0.5" style={{ color: T.muted }}>Hilf anderen Fahrern</div>
+              <div className="text-xs mt-0.5" style={{ color: T.muted }}>Hilf anderen Fahrern auf der Route</div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
               <X size={14} style={{ color: T.muted }} />
             </button>
           </div>
         </div>
 
-        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
           {submitted ? (
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-10">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(34,197,94,0.12)' }}>
-                <Check size={24} style={{ color: T.green }} />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: T.greenBg, border: `1px solid ${T.greenBorder}` }}>
+                <Check size={26} style={{ color: T.green }} />
               </div>
               <div className="font-bold text-sm mb-1" style={{ color: T.text }}>Danke!</div>
               <div className="text-xs" style={{ color: T.muted }}>Deine Meldung wird geprüft.</div>
@@ -298,24 +354,22 @@ function ReportModal({ onClose }) {
             </motion.div>
           ) : (
             <div className="flex flex-col gap-3 pb-2">
-              {/* Scan buttons */}
               <div className="flex gap-2 mt-1">
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
                 <motion.button whileTap={{ scale: 0.96 }} onClick={() => fileRef.current?.click()} disabled={photoLoading}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold"
-                  style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: T.amber }}>
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold"
+                  style={{ background: T.amberBg, border: `1px solid ${T.amberBorder}`, color: T.amber }}>
                   {photoLoading ? <><Loader2 size={13} className="animate-spin" /> Analysiere…</> : <><Camera size={13} /> Foto scannen</>}
                 </motion.button>
                 <motion.button whileTap={{ scale: 0.96 }} onClick={toggleVoice}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold"
-                  style={{ background: listening ? 'rgba(232,25,44,0.1)' : 'rgba(59,130,246,0.08)', border: `1px solid ${listening ? 'rgba(232,25,44,0.3)' : 'rgba(59,130,246,0.2)'}`, color: listening ? T.accent : T.blue }}>
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold"
+                  style={{ background: listening ? T.redBg : 'rgba(96,165,250,0.08)', border: `1px solid ${listening ? T.redBorder : 'rgba(96,165,250,0.2)'}`, color: listening ? T.red : T.blue }}>
                   {listening ? <><MicOff size={13} /> Stop</> : <><Mic size={13} /> Sprache</>}
                 </motion.button>
               </div>
 
-              {error && <div className="rounded-xl px-3 py-2 text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#f87171' }}>{error}</div>}
+              {error && <div className="rounded-xl px-3 py-2 text-xs" style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, color: '#f87171' }}>{error}</div>}
 
-              {/* Fields */}
               <div>
                 <label className="text-[10px] font-bold tracking-widest block mb-1.5" style={{ color: T.muted }}>TANKSTELLE *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="z.B. Shell, OMV, NIS…" style={inp} />
@@ -337,13 +391,15 @@ function ReportModal({ onClose }) {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold tracking-widest block mb-1.5" style={{ color: T.amber }}>DIESEL €/L</label>
-                  <input type="number" step="0.001" min="0.5" max="5" value={form.diesel} onChange={e => setForm(f => ({ ...f, diesel: e.target.value }))} placeholder="1.399"
-                    style={{ ...inp, borderColor: form.diesel ? 'rgba(245,158,11,0.35)' : T.cardBorder }} />
+                  <input type="number" step="0.001" min="0.5" max="5" value={form.diesel}
+                    onChange={e => setForm(f => ({ ...f, diesel: e.target.value }))} placeholder="1.399"
+                    style={{ ...inp, borderColor: form.diesel ? T.amberBorder : T.border }} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold tracking-widest block mb-1.5" style={{ color: T.blue }}>BENZIN €/L</label>
-                  <input type="number" step="0.001" min="0.5" max="5" value={form.benzin} onChange={e => setForm(f => ({ ...f, benzin: e.target.value }))} placeholder="1.299"
-                    style={{ ...inp, borderColor: form.benzin ? 'rgba(59,130,246,0.35)' : T.cardBorder }} />
+                  <input type="number" step="0.001" min="0.5" max="5" value={form.benzin}
+                    onChange={e => setForm(f => ({ ...f, benzin: e.target.value }))} placeholder="1.299"
+                    style={{ ...inp, borderColor: form.benzin ? 'rgba(96,165,250,0.3)' : T.border }} />
                 </div>
               </div>
 
@@ -354,11 +410,11 @@ function ReportModal({ onClose }) {
 
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleSubmit}
                 disabled={loading || !form.name || (!form.diesel && !form.benzin)}
-                className="w-full py-3 rounded-xl font-bold text-sm mt-1"
+                className="w-full py-3.5 rounded-2xl font-bold text-sm mt-1"
                 style={{
-                  background: form.name && (form.diesel || form.benzin) ? T.accent : 'rgba(255,255,255,0.06)',
+                  background: form.name && (form.diesel || form.benzin) ? T.accent : 'rgba(255,255,255,0.05)',
                   color: form.name && (form.diesel || form.benzin) ? 'white' : T.muted,
-                  boxShadow: form.name && (form.diesel || form.benzin) ? '0 4px 20px rgba(232,25,44,0.3)' : 'none',
+                  boxShadow: form.name && (form.diesel || form.benzin) ? '0 4px 24px rgba(232,25,44,0.3)' : 'none',
                 }}>
                 {loading ? 'Wird gesendet…' : '⛽ Preis melden'}
               </motion.button>
@@ -373,8 +429,8 @@ function ReportModal({ onClose }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FuelPage() {
   const [stations, setStations] = useState([])
-  const [localStations, setLocalStations] = useState({}) // { de: [...], fr: [...] }
-  const [localCity, setLocalCity] = useState({}) // { de: 'München', fr: 'Paris' }
+  const [localStations, setLocalStations] = useState({})
+  const [localCity, setLocalCity] = useState({})
   const [summary, setSummary] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeCountry, setActiveCountry] = useState('all')
@@ -408,7 +464,7 @@ export default function FuelPage() {
     return () => { clearInterval(countdownRef.current); clearInterval(timerRef.current) }
   }, [])
 
-  const SEARCH_ONLY = ['de', 'fr'] // these countries use search/GPS only
+  const SEARCH_ONLY = ['de', 'fr']
   const routeFiltered = stations.filter(s => {
     if (SEARCH_ONLY.includes(s.country)) return false
     return activeCountry === 'all' || s.country === activeCountry
@@ -416,135 +472,151 @@ export default function FuelPage() {
   const displayStations = SEARCH_ONLY.includes(activeCountry)
     ? (localStations[activeCountry] || [])
     : routeFiltered
+
   const dieselPrices = displayStations.map(s => s.diesel).filter(Boolean)
   const avgPrice = dieselPrices.length ? (dieselPrices.reduce((a, b) => a + b) / dieselPrices.length).toFixed(3) : '—'
   const minPrice = dieselPrices.length ? Math.min(...dieselPrices).toFixed(3) : '—'
   const countdownMin = Math.floor(countdown / 60)
   const countdownSec = countdown % 60
-  const progressPct = ((REFRESH_INTERVAL - countdown) / REFRESH_INTERVAL) * 100
 
   return (
-    <div className="page-container" style={{ background: T.bg, overflowX: 'hidden' }}>
-      <div className="px-4 pt-6 pb-6">
+    <div className="page-container" style={{ background: T.bg }}>
+      <div className="px-4 pt-6 pb-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-black tracking-tight" style={{ color: T.text }}>Tankpreise</h1>
-            <p className="text-xs mt-0.5" style={{ color: T.muted }}>Sıla Yolu Route</p>
+            <h1 className="text-2xl font-black tracking-tight" style={{ color: T.text }}>Tankpreise</h1>
+            <p className="text-xs mt-0.5" style={{ color: T.muted }}>Sıla Yolu · Live Preise</p>
           </div>
           <motion.button whileTap={{ scale: 0.88 }} onClick={() => { loadData(); startCountdown() }}
-            className="w-9 h-9 rounded-xl flex items-center justify-center" style={glass}>
-            <RefreshCw size={14} style={{ color: T.muted }} />
+            className="w-10 h-10 rounded-2xl flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.border}` }}>
+            <RefreshCw size={15} style={{ color: T.mutedLight }} />
           </motion.button>
         </div>
 
-        {/* Countdown */}
-        <div className="mb-5">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Timer size={10} style={{ color: T.muted }} />
-            <span className="text-[11px]" style={{ color: T.muted }}>
-              Aktualisierung in {countdownMin}:{String(countdownSec).padStart(2, '0')}
-            </span>
-          </div>
-          <div className="h-px rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <motion.div className="h-full rounded-full"
-              style={{ background: 'rgba(255,255,255,0.2)', width: `${progressPct}%` }}
-              transition={{ duration: 0.5 }} />
-          </div>
-        </div>
-
         {/* View Toggle */}
-        <div className="flex gap-2 mb-5 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.cardBorder}` }}>
-          {[['stations', '⛽ Tankstellen'], ['summary', '🗺️ Länder']].map(([id, label]) => (
+        <div className="flex gap-1.5 mb-5 p-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}>
+          {[['stations', '⛽ Tankstellen'], ['summary', '🗺️ Länderübersicht']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
-              className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
               style={{
-                background: activeView === id ? 'rgba(232,25,44,0.15)' : 'transparent',
-                color: activeView === id ? '#fca5a5' : T.muted,
-                border: activeView === id ? '1px solid rgba(232,25,44,0.25)' : '1px solid transparent',
+                background: activeView === id ? 'rgba(255,255,255,0.08)' : 'transparent',
+                color: activeView === id ? T.text : T.muted,
+                border: activeView === id ? `1px solid ${T.borderStrong}` : '1px solid transparent',
               }}>
               {label}
             </button>
           ))}
         </div>
 
-        {/* Stats */}
-        {!loading && activeView === 'stations' && (
-          <div className="flex gap-2 mb-4">
-            {[['Ø Diesel', avgPrice, T.text], ['Günstigste', minPrice, T.green]].map(([label, val, color]) => (
-              <div key={label} className="flex-1 rounded-xl px-3 py-3" style={{ background: T.card, border: `1px solid ${T.cardBorder}` }}>
-                <div className="text-[10px] mb-1" style={{ color: T.muted }}>{label}</div>
-                <div className="font-black text-base" style={{ color }}>{val} €</div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* ── STATIONS VIEW ── */}
         {activeView === 'stations' && (
           <>
             {/* Country tabs */}
-            <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1 no-scrollbar">
+            <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 no-scrollbar">
               {COUNTRY_TABS.map(tab => (
                 <button key={tab.id} onClick={() => { setActiveCountry(tab.id); setExpandedId(null) }}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                  className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
                   style={{
-                    background: activeCountry === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    background: activeCountry === tab.id ? 'rgba(255,255,255,0.09)' : 'transparent',
                     color: activeCountry === tab.id ? T.text : T.muted,
-                    border: `1px solid ${activeCountry === tab.id ? T.glassBorder : 'transparent'}`,
+                    border: `1px solid ${activeCountry === tab.id ? T.borderStrong : 'transparent'}`,
                   }}>
                   {tab.flag} {tab.label}
                 </button>
               ))}
             </div>
 
-            {/* DE / FR location search */}
+            {/* Stats */}
+            {!loading && displayStations.length > 0 && (
+              <div className="flex gap-2 mb-4">
+                <div className="flex-1 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}>
+                  <div className="text-[10px] font-bold tracking-widest mb-1" style={{ color: T.muted }}>Ø DIESEL</div>
+                  <div className="font-black text-xl" style={{ color: avgPrice !== '—' ? priceColor(parseFloat(avgPrice)) : T.muted }}>{avgPrice} <span className="text-xs font-normal" style={{ color: T.muted }}>€/L</span></div>
+                </div>
+                <div className="flex-1 rounded-2xl px-4 py-3" style={{ background: T.greenBg, border: `1px solid ${T.greenBorder}` }}>
+                  <div className="text-[10px] font-bold tracking-widest mb-1" style={{ color: T.green }}>GÜNSTIGSTE</div>
+                  <div className="font-black text-xl" style={{ color: T.green }}>{minPrice} <span className="text-xs font-normal" style={{ color: T.green }}>€/L</span></div>
+                </div>
+              </div>
+            )}
+
+            {/* DE / FR search */}
             {(activeCountry === 'de' || activeCountry === 'fr') && (
-              <div className="mb-3">
+              <div className="mb-4">
                 <LocationSearch
                   country={activeCountry}
-                  placeholder={activeCountry === 'fr' ? 'Stadt in Frankreich…' : 'Stadt in Deutschland…'}
+                  placeholder={activeCountry === 'fr' ? 'Stadt in Frankreich suchen…' : 'Stadt in Deutschland suchen…'}
                   onResult={(s, city) => { setLocalStations(p => ({ ...p, [activeCountry]: s })); setLocalCity(p => ({ ...p, [activeCountry]: city })); setExpandedId(null) }}
                 />
                 {localCity[activeCountry] && localStations[activeCountry]?.length > 0 && (
-                  <div className="flex items-center justify-between mt-1 mb-1">
+                  <div className="flex items-center justify-between mt-2">
                     <span className="text-xs" style={{ color: T.green }}>📍 {localStations[activeCountry].length} Stationen nahe {localCity[activeCountry]}</span>
-                    <button onClick={() => { setLocalStations(p => ({ ...p, [activeCountry]: [] })); setLocalCity(p => ({ ...p, [activeCountry]: '' })) }} className="text-[11px] px-2 py-1 rounded-lg" style={{ color: T.muted, background: T.card }}>Zurücksetzen</button>
+                    <button onClick={() => { setLocalStations(p => ({ ...p, [activeCountry]: [] })); setLocalCity(p => ({ ...p, [activeCountry]: '' })) }}
+                      className="text-[11px] px-2.5 py-1 rounded-lg" style={{ color: T.muted, background: 'rgba(255,255,255,0.05)' }}>
+                      Zurücksetzen
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Avg notice */}
+            {/* Average notice */}
             {activeCountry !== 'all' && AVG_COUNTRIES.includes(activeCountry) && (
-              <div className="rounded-xl px-3 py-2.5 mb-3 text-xs" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', color: T.muted }}>
-                ⚠️ <span style={{ color: T.amber }}>Ø Markenpreis</span> — täglich aktualisiert via fuelo.net
+              <div className="rounded-xl px-3 py-2.5 mb-4 text-xs flex items-center gap-2"
+                style={{ background: T.amberBg, border: `1px solid ${T.amberBorder}` }}>
+                <span style={{ color: T.amber }}>⚠</span>
+                <span style={{ color: T.mutedLight }}>Ø Markenpreis — täglich via <strong style={{ color: T.amber }}>fuelo.net</strong></span>
               </div>
             )}
 
+            {/* Stations list */}
             {loading ? <SkeletonList count={5} /> : (
               <div className="flex flex-col gap-2">
-                {displayStations.map(s => (
-                  <StationCard key={s.id} station={s}
+                {displayStations.map((s, i) => (
+                  <StationCard key={s.id} station={s} rank={i}
                     expanded={expandedId === s.id}
                     onExpand={() => setExpandedId(expandedId === s.id ? null : s.id)} />
                 ))}
+
                 {displayStations.length === 0 && SEARCH_ONLY.includes(activeCountry) && (
-                  <div className="rounded-2xl px-4 py-8 text-center" style={{ background: T.card, border: `1px solid ${T.cardBorder}` }}>
-                    <Navigation size={28} className="mx-auto mb-3 opacity-30" style={{ color: T.green }} />
-                    <p className="text-sm font-semibold mb-1" style={{ color: T.text }}>Standort eingeben</p>
-                    <p className="text-xs" style={{ color: T.muted }}>
-                      {activeCountry === 'fr' ? 'Stadt in Frankreich suchen für live Preise via prix-carburants.gouv.fr' : 'Stadt suchen oder GPS nutzen für live Tankstellen via Tankerkönig'}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="rounded-2xl p-8 text-center"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: `1px dashed ${T.border}` }}>
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                      style={{ background: T.greenBg, border: `1px solid ${T.greenBorder}` }}>
+                      <Navigation size={22} style={{ color: T.green }} />
+                    </div>
+                    <p className="font-bold text-sm mb-1.5" style={{ color: T.text }}>Stadt eingeben oder GPS nutzen</p>
+                    <p className="text-xs leading-relaxed" style={{ color: T.muted }}>
+                      {activeCountry === 'fr'
+                        ? 'Live Preise via prix-carburants.gouv.fr'
+                        : 'Live Preise via Tankerkönig'}
                     </p>
-                  </div>
+                  </motion.div>
                 )}
-                {displayStations.length === 0 && !SEARCH_ONLY.includes(activeCountry) && (
+
+                {displayStations.length === 0 && !SEARCH_ONLY.includes(activeCountry) && activeCountry !== 'all' && (
                   <div className="text-center py-12" style={{ color: T.muted }}>
                     <Fuel size={32} className="mx-auto mb-2 opacity-20" />
                     <p className="text-sm">Keine Daten verfügbar</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Countdown */}
+            {!loading && (
+              <div className="mt-5 flex items-center gap-2">
+                <Timer size={10} style={{ color: T.muted }} />
+                <div className="flex-1 h-px rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  <motion.div className="h-full rounded-full" style={{ background: 'rgba(255,255,255,0.15)', width: `${((REFRESH_INTERVAL - countdown) / REFRESH_INTERVAL) * 100}%` }} />
+                </div>
+                <span className="text-[10px]" style={{ color: T.muted }}>
+                  {countdownMin}:{String(countdownSec).padStart(2, '0')}
+                </span>
               </div>
             )}
           </>
@@ -553,40 +625,52 @@ export default function FuelPage() {
         {/* ── SUMMARY VIEW ── */}
         {activeView === 'summary' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="rounded-xl px-4 py-3 mb-4 flex gap-3" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
-              <span>💡</span>
-              <p className="text-xs" style={{ color: T.muted }}>
-                In <strong style={{ color: T.text }}>Serbien</strong> voll tanken! Nochmal in <strong style={{ color: T.text }}>Bulgarien</strong> vor der TR-Grenze.
+            <div className="rounded-2xl px-4 py-3.5 mb-4 flex gap-3 items-start"
+              style={{ background: T.greenBg, border: `1px solid ${T.greenBorder}` }}>
+              <span className="text-base">💡</span>
+              <p className="text-xs leading-relaxed" style={{ color: T.mutedLight }}>
+                In <strong style={{ color: T.text }}>Serbien</strong> voll tanken! Nochmal in <strong style={{ color: T.text }}>Bulgarien</strong> vor der Türkei-Grenze.
               </p>
+            </div>
+
+            {/* Legend */}
+            <div className="flex gap-3 mb-4">
+              {[[T.green, '< 1.50 €'], [T.amber, '1.50–1.75 €'], [T.red, '> 1.75 €']].map(([color, label]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                  <span className="text-[10px]" style={{ color: T.muted }}>{label}</span>
+                </div>
+              ))}
             </div>
 
             {loading ? <SkeletonList count={6} /> : (
               <div className="flex flex-col gap-2">
                 {summary.map((c, i) => {
                   const price = c.diesel
-                  const isAvg = AVG_COUNTRIES.includes(c.code)
                   const TIcon = c.trend === 'down' ? TrendingDown : c.trend === 'up' ? TrendingUp : Minus
-                  const tColor = c.trend === 'down' ? T.green : c.trend === 'up' ? '#ef4444' : T.muted
+                  const tColor = c.trend === 'down' ? T.green : c.trend === 'up' ? T.red : T.muted
+                  const isLive = c.source?.includes('live') || c.source?.includes('Tankerkönig') || c.source?.includes('fuelo')
                   return (
-                    <motion.div key={c.code} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                      className="rounded-xl px-4 py-3 flex items-center justify-between"
-                      style={{ background: T.card, border: `1px solid ${T.cardBorder}` }}>
+                    <motion.div key={c.code}
+                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                      className="rounded-2xl px-4 py-3.5 flex items-center justify-between"
+                      style={{ background: T.card, border: `1px solid ${T.border}` }}>
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{c.flag}</span>
+                        <span className="text-2xl">{c.flag}</span>
                         <div>
-                          <div className="font-semibold text-sm" style={{ color: T.text }}>{c.country}</div>
-                          <div className="flex items-center gap-1 text-[10px]" style={{ color: tColor }}>
+                          <div className="font-bold text-sm" style={{ color: T.text }}>{c.country}</div>
+                          <div className="flex items-center gap-1 text-[10px] mt-0.5" style={{ color: tColor }}>
                             <TIcon size={10} />
                             {c.trend === 'down' ? 'günstig' : c.trend === 'up' ? 'teuer' : 'stabil'}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-black text-base" style={{ color: priceColor(price) }}>
-                          {price?.toFixed(3)} €
+                        <div className="font-black text-2xl" style={{ color: priceColor(price) }}>
+                          {price?.toFixed(3)}
                         </div>
-                        <div className="text-[10px]" style={{ color: isAvg ? T.amber : T.green }}>
-                          {isAvg ? 'Ø Preis' : 'Live'}
+                        <div className="text-[9px] mt-0.5" style={{ color: isLive ? T.green : T.muted }}>
+                          {isLive ? '● LIVE' : 'Ø täglich'} · €/L DSL
                         </div>
                       </div>
                     </motion.div>
@@ -607,8 +691,8 @@ export default function FuelPage() {
 
         {/* Report button */}
         <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowReport(true)}
-          className="w-full mt-5 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-          style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.cardBorder}`, color: T.muted }}>
+          className="w-full mt-5 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
+          style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.border}`, color: T.mutedLight }}>
           <Fuel size={14} />
           Preis melden
         </motion.button>
