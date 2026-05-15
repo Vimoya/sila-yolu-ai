@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import axios from 'axios'
 import OpenAI from 'openai'
-import { getFueloPrices, getAllFueloPrices } from '../scraper/fuelo.js'
+import { getFueloPrices, getAllFueloPrices, getAllFueloStations } from '../scraper/fuelo.js'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -13,58 +13,108 @@ const STATIC_PRICES = {
   rs: { diesel: 1.390, benzin: 1.290, trend: 'down', note: 'Günstigste auf der Route – voll tanken!' },
   bg: { diesel: 1.610, benzin: 1.430, trend: 'stable', note: 'Vor Kapıkule nochmal tanken' },
   tr: { diesel: 1.250, benzin: 1.190, trend: 'down', note: 'In TRY – ca. Gegenwert in EUR' },
+  fr: { diesel: 1.890, benzin: 1.950, trend: 'stable', note: 'Autoroute – teurer als Stadtgebiet' },
+  gr: { diesel: 1.730, benzin: 1.910, trend: 'stable', note: 'Günstiger als DE/AT' },
 }
 
-// Tankerkönig: live DE Preise — mehrere Städte entlang der Route
-async function fetchDE(apiKey) {
+// Tankerkönig: live DE Preise — günstigste Diesel-Stationen nahe Nutzern
+// Nutzt nur 1 Request (Rate Limit: 1/min) — Zentrum Deutschland, 25km Radius
+const tkCache = {}
+const TK_TTL = 5 * 60 * 1000 // 5min cache — Tankerkönig rate limit: 1 req/min
+
+async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
+  lat = parseFloat(lat); lng = parseFloat(lng)
+  const cacheKey = `${lat.toFixed(2)}_${lng.toFixed(2)}`
+  const now = Date.now()
+  if (tkCache[cacheKey] && now - tkCache[cacheKey].fetchedAt < TK_TTL) {
+    return tkCache[cacheKey].data
+  }
   try {
-    // Wichtigste Städte auf der Sıla Yolu Route in Deutschland
-    const locations = [
-      { lat: 48.137, lng: 11.576, city: 'München' },
-      { lat: 48.775, lng: 9.182, city: 'Stuttgart' },
-      { lat: 51.227, lng: 6.773, city: 'Düsseldorf' },
-      { lat: 53.551, lng: 10.000, city: 'Hamburg' },
-      { lat: 52.520, lng: 13.405, city: 'Berlin' },
-      { lat: 50.938, lng: 6.960, city: 'Köln' },
-    ]
-
-    const results = await Promise.all(
-      locations.map(loc =>
-        axios.get(
-          `https://creativecommons.tankerkoenig.de/json/list.php?lat=${loc.lat}&lng=${loc.lng}&rad=5&sort=price&type=diesel&apikey=${apiKey}`,
-          { timeout: 5000 }
-        ).then(r => ({ city: loc.city, data: r.data })).catch(() => null)
-      )
+    const res = await axios.get(
+      `https://creativecommons.tankerkoenig.de/json/list.php?lat=${lat}&lng=${lng}&rad=${rad}&sort=dist&type=all&apikey=${apiKey}`,
+      { timeout: 8000 }
     )
+    if (!res.data.ok || !res.data.stations?.length) return null
 
-    const stations = []
-    for (const result of results) {
-      if (!result?.data?.ok || !result.data.stations?.length) continue
-      const s = result.data.stations[0] // günstigste in dieser Stadt
-      if (!s.diesel) continue
-      stations.push({
-        id: `de_${result.city}`,
-        name: `${s.brand || s.name}`.trim(),
-        address: `${result.city} — ${s.street || ''} ${s.houseNumber || ''}`.trim(),
-        diesel: s.diesel,
-        benzin: s.e5 || null,
-        cheap: false,
-        updated: 'live 🟢',
-        country: 'de',
-        note: `Günstigste in ${result.city}`,
-        lat: s.lat,
-        lng: s.lng,
-      })
+    const parseP = v => {
+      const n = parseFloat(String(v).replace(',', '.'))
+      return isNaN(n) || n <= 0 ? null : n
     }
 
+    const data = res.data.stations
+      .filter(s => s.diesel || s.e5)
+      .sort((a, b) => (parseP(a.diesel) || 99) - (parseP(b.diesel) || 99))
+      .slice(0, 5)
+      .map((s, i) => ({
+        id: `de_tk_${i}`,
+        name: `${s.brand || s.name}`.trim(),
+        address: `${s.street || ''} ${s.houseNumber || ''}, ${s.place}`.trim(),
+        diesel: parseP(s.diesel),
+        benzin: parseP(s.e5),
+        cheap: i === 0,
+        updated: 'live 🟢',
+        country: 'de',
+        note: s.dist ? `${s.dist.toFixed(1)} km entfernt` : 'Live via Tankerkönig',
+        lat: s.lat,
+        lng: s.lng,
+      }))
+
+    tkCache[cacheKey] = { data, fetchedAt: now }
+    return data
+  } catch { return tkCache[cacheKey]?.data || null }
+}
+
+// Frankreich: offizielle Regierungs-API, kostenlos, alle 10 Min aktualisiert
+// Route-Departements: 75=Paris, 69=Lyon, 13=Marseille, 67=Strasbourg, 68=Mulhouse
+const FR_ROUTE_DEPTS = ['75', '69', '13', '67', '68', '01', '71', '21']
+const frCache = { data: null, fetchedAt: 0 }
+async function fetchFR() {
+  const now = Date.now()
+  if (frCache.data && now - frCache.fetchedAt < 30 * 60 * 1000) return frCache.data
+  try {
+    // Fetch multiple route departments in parallel
+    const results = await Promise.allSettled(
+      FR_ROUTE_DEPTS.map(dep =>
+        axios.get(
+          `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-quotidien/exports/json?limit=50&refine=dep_code:${dep}`,
+          { timeout: 10000, headers: { Accept: 'application/json' } }
+        )
+      )
+    )
+    const allRows = results.flatMap(r => r.status === 'fulfilled' && Array.isArray(r.value.data) ? r.value.data : [])
+    if (!allRows.length) return null
+
+    // Group by station id
+    const stationsMap = {}
+    for (const row of allRows) {
+      const id = row.id
+      if (!stationsMap[id]) {
+        stationsMap[id] = {
+          name: `${row.ville || 'Frankreich'}`,
+          address: `${row.adresse || ''}, ${row.ville || ''}`.trim().replace(/^,\s*/, ''),
+          diesel: null, benzin: null,
+          updated: 'live 🟢', country: 'fr',
+          note: `Live via prix-carburants.gouv.fr`,
+        }
+      }
+      const price = parseFloat(row.prix_valeur)
+      if (isNaN(price) || price <= 0) continue
+      if (row.prix_nom === 'Gazole') stationsMap[id].diesel = price
+      if (row.prix_nom === 'SP95' || row.prix_nom === 'SP98') {
+        if (!stationsMap[id].benzin || price < stationsMap[id].benzin) stationsMap[id].benzin = price
+      }
+    }
+
+    const stations = Object.entries(stationsMap)
+      .filter(([, s]) => s.diesel && s.diesel > 1 && s.diesel < 3)
+      .sort((a, b) => a[1].diesel - b[1].diesel)
+      .slice(0, 5)
+      .map(([id, s], i) => ({ id: `fr_${id}`, ...s, cheap: i === 0 }))
+
     if (!stations.length) return null
-
-    // Sortiere nach Preis, günstigste zuerst
-    stations.sort((a, b) => a.diesel - b.diesel)
-    stations[0].cheap = true
-
+    frCache.data = stations; frCache.fetchedAt = now
     return stations
-  } catch { return null }
+  } catch { return frCache.data }
 }
 
 // Spritpreisrechner AT: live Österreich Preise (staatliche API, kostenlos)
@@ -109,47 +159,108 @@ function staticStations() {
 
 router.get('/route', async (req, res) => {
   const tkKey = process.env.TANKERKOENIG_API_KEY
-  const base = staticStations()
   const sources = []
 
-  const [liveDE, liveAT, fueloData] = await Promise.all([
+  const [liveDE, liveAT, liveFR, fueloStations] = await Promise.all([
     tkKey ? fetchDE(tkKey) : null,
     fetchAT(),
-    getAllFueloPrices(),
+    fetchFR(),
+    getAllFueloStations(),
   ])
 
-  let stations = base
+  let stations = []
 
-  // Update HU/RS/BG/TR stations with fuelo.net live data
-  if (Object.keys(fueloData).length > 0) {
-    stations = stations.map(s => {
-      const live = fueloData[s.country]
-      if (!live) return s
-      return {
-        ...s,
-        diesel: live.diesel ?? s.diesel,
-        benzin: live.benzin ?? s.benzin,
-        updated: 'täglich 🟡',
-        note: s.note + ' (fuelo.net)',
-      }
-    })
-    sources.push('fuelo.net (HU/RS/BG/TR)')
-  }
+  // DE — kein Fallback, nur via /nearby (Suche/GPS im Frontend)
+  if (liveDE?.length) sources.push('Tankerkönig DE live')
 
-  if (liveDE) {
-    stations = [...liveDE, ...stations.filter(s => s.country !== 'de')]
-    sources.push('Tankerkönig DE live')
-  }
-  if (liveAT) {
-    stations = [...stations.filter(s => s.country !== 'at'), ...liveAT]
+  // AT
+  if (liveAT?.length) {
+    stations.push(...liveAT)
     sources.push('e-control.at AT live')
+  } else {
+    stations.push(
+      { id: 's_at1', name: 'OMV Wien Süd', address: 'A2 Wien Süd', diesel: 1.849, benzin: 1.769, cheap: false, updated: 'täglich', country: 'at', note: 'Autobahnpreis' },
+      { id: 's_at2', name: 'AVANTI / HOFER Wien', address: 'Wien / Graz', diesel: 1.749, benzin: 1.699, cheap: true, updated: 'täglich', country: 'at', note: 'Günstigste in AT' },
+    )
   }
 
-  const sourceStr = sources.length
-    ? sources.join(' + ')
-    : 'Statische Preise (Fallback)'
+  // FR
+  if (liveFR?.length) {
+    stations.push(...liveFR)
+    sources.push('prix-carburants.gouv.fr FR live')
+  } else {
+    stations.push(
+      { id: 's_fr1', name: 'TotalEnergies Paris', address: 'A6 / A7 Paris', diesel: 1.89, benzin: 1.95, cheap: true, updated: 'täglich', country: 'fr', note: 'Autoroute Frankreich' },
+      { id: 's_fr2', name: 'BP / Shell Frankreich', address: 'A7 Lyon–Marseille', diesel: 1.92, benzin: 1.98, cheap: false, updated: 'täglich', country: 'fr', note: 'A7 Rhônetal' },
+    )
+  }
 
+  // HU/RS/BG/TR/GR from fuelo.net (real per-brand stations)
+  const fueloCountries = ['hu', 'rs', 'bg', 'tr', 'gr']
+  const staticFallback = {
+    hu: [{ id: 's_hu1', name: 'MOL Budapest', address: 'M7 / M1 Budapest', diesel: 1.620, benzin: 1.520, cheap: true, updated: 'wöchentlich', country: 'hu', note: 'Staatlich gedeckelt' }],
+    rs: [{ id: 's_rs1', name: 'NIS Tankstelle', address: 'E75 / E70 Serbien', diesel: 1.390, benzin: 1.290, cheap: true, updated: 'wöchentlich', country: 'rs', note: 'Voll tanken!' }],
+    bg: [
+      { id: 's_bg1', name: 'Lukoil', address: 'A1 / E80 Sofia', diesel: 1.64, benzin: 1.53, cheap: true, updated: 'wöchentlich', country: 'bg', note: 'Vor Kapıkule nochmal tanken!' },
+      { id: 's_bg2', name: 'OMV', address: 'A1 Plovdiv', diesel: 1.65, benzin: 1.54, cheap: false, updated: 'wöchentlich', country: 'bg', note: 'A1 Richtung Türkei' },
+      { id: 's_bg3', name: 'Petrol', address: 'E80 Sofia', diesel: 1.63, benzin: 1.52, cheap: false, updated: 'wöchentlich', country: 'bg', note: 'E80 Route' },
+      { id: 's_bg4', name: 'Shell', address: 'A1 Plovdiv–Sofia', diesel: 1.66, benzin: 1.56, cheap: false, updated: 'wöchentlich', country: 'bg', note: 'A1 Autobahn' },
+      { id: 's_bg5', name: 'Rompetrol', address: 'E80 Plovdiv', diesel: 1.62, benzin: 1.51, cheap: false, updated: 'wöchentlich', country: 'bg', note: 'Günstig vor Grenze' },
+    ],
+    tr: [
+      { id: 's_tr1', name: 'Petrol Ofisi', address: 'D100 / TEM Istanbul', diesel: 1.92, benzin: 1.52, cheap: true, updated: 'wöchentlich', country: 'tr', note: 'Größte TR Kette' },
+      { id: 's_tr2', name: 'Shell Türkiye', address: 'D100 Istanbul', diesel: 1.94, benzin: 1.54, cheap: false, updated: 'wöchentlich', country: 'tr', note: 'D100 Hauptroute' },
+      { id: 's_tr3', name: 'Opet', address: 'TEM Istanbul / Ankara', diesel: 1.91, benzin: 1.51, cheap: false, updated: 'wöchentlich', country: 'tr', note: 'TEM Autobahn' },
+      { id: 's_tr4', name: 'BP Türkiye', address: 'TEM / E80 Istanbul', diesel: 1.93, benzin: 1.53, cheap: false, updated: 'wöchentlich', country: 'tr', note: 'E80 Richtung Edirne' },
+    ],
+    gr: [
+      { id: 's_gr1', name: 'Avin', address: 'A1 / E75 Athen', diesel: 1.72, benzin: 1.89, cheap: true, updated: 'wöchentlich', country: 'gr', note: 'Günstigste in GR' },
+      { id: 's_gr2', name: 'EKO', address: 'E75 Thessaloniki', diesel: 1.74, benzin: 1.91, cheap: false, updated: 'wöchentlich', country: 'gr', note: 'E75 Nordgriechenland' },
+      { id: 's_gr3', name: 'Shell', address: 'A1 Athen', diesel: 1.76, benzin: 1.93, cheap: false, updated: 'wöchentlich', country: 'gr', note: 'A1 Autobahn' },
+      { id: 's_gr4', name: 'BP', address: 'A1 / E94 Athen', diesel: 1.75, benzin: 1.92, cheap: false, updated: 'wöchentlich', country: 'gr', note: 'A1 Richtung Thessaloniki' },
+    ],
+  }
+
+  let fueloUsed = false
+  for (const code of fueloCountries) {
+    const live = fueloStations[code] || []
+    const fallback = staticFallback[code] || []
+    // Merge: live stations + any fallback brands not already covered
+    const liveNames = new Set(live.map(s => s.name.toLowerCase()))
+    const extra = fallback.filter(s => !liveNames.has(s.name.toLowerCase()))
+    const merged = [...live, ...extra]
+    if (merged.length) {
+      stations.push(...merged)
+      if (live.length) fueloUsed = true
+    }
+  }
+  if (fueloUsed) sources.push('fuelo.net (HU/RS/BG/TR/GR)')
+
+  const sourceStr = sources.length ? sources.join(' + ') : 'Statische Preise (Fallback)'
   res.json({ stations, source: sourceStr, lastUpdated: new Date().toISOString() })
+})
+
+router.get('/geocode', async (req, res) => {
+  const { q, lat, lon } = req.query
+  try {
+    let url
+    const { country: cc } = req.query
+    if (q) {
+      const codes = cc || 'de,fr,at'
+      url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=${codes}`
+    } else if (lat && lon) {
+      url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+    } else {
+      return res.status(400).json({ error: 'q or lat/lon required' })
+    }
+    const { data } = await axios.get(url, {
+      timeout: 6000,
+      headers: { 'User-Agent': 'SilaYoluApp/1.0 (kilincerto@gmail.com)', 'Accept-Language': 'de' },
+    })
+    res.json(data)
+  } catch (e) {
+    res.status(502).json({ error: 'geocode failed', detail: e.message })
+  }
 })
 
 router.get('/nearby', async (req, res) => {
@@ -158,28 +269,11 @@ router.get('/nearby', async (req, res) => {
 
   const tkKey = process.env.TANKERKOENIG_API_KEY
   if (country === 'de' && tkKey) {
-    try {
-      const { data } = await axios.get(
-        `https://creativecommons.tankerkoenig.de/json/list.php?lat=${lat}&lng=${lng}&rad=5&sort=price&type=all&apikey=${tkKey}`,
-        { timeout: 5000 }
-      )
-      if (data.ok && data.stations?.length) {
-        const stations = data.stations.slice(0, 5).map((s, i) => ({
-          id: `near_${i}`,
-          name: `${s.brand} ${s.name}`.trim(),
-          address: `${s.street} ${s.houseNumber || ''}, ${s.place}`,
-          diesel: s.diesel || null,
-          benzin: s.e5 || null,
-          cheap: i === 0,
-          updated: 'live 🟢',
-          country: 'de',
-          dist: s.dist ? `${s.dist.toFixed(1)} km` : null,
-          note: 'Live via Tankerkönig',
-          mapsUrl: `https://www.google.com/maps/search/tankstelle/@${s.lat},${s.lng},16z`,
-        }))
-        return res.json({ stations, source: 'Tankerkönig live' })
-      }
-    } catch {}
+    const stations = await fetchDE(tkKey, lat, lng, 25)
+    if (stations?.length) {
+      return res.json({ stations, source: 'Tankerkönig live 🟢' })
+    }
+    return res.json({ stations: [], source: 'unavailable' })
   }
 
   if (country === 'at') {
@@ -202,7 +296,6 @@ router.get('/nearby', async (req, res) => {
             updated: 'live 🟢',
             country: 'at',
             note: 'Live via e-control.at',
-            mapsUrl: `https://www.google.com/maps/search/tankstelle/@${s.location?.latitude},${s.location?.longitude},16z`,
           }
         })
         return res.json({ stations, source: 'e-control.at live' })
@@ -210,12 +303,40 @@ router.get('/nearby', async (req, res) => {
     } catch {}
   }
 
-  // Fallback: Google Maps deep link
-  res.json({
-    stations: [],
-    mapsUrl: `https://www.google.com/maps/search/gas+station/@${lat},${lng},14z`,
-    source: 'Google Maps',
-  })
+  if (country === 'fr') {
+    try {
+      // Reverse geocode to get dep_code, then query FR API
+      const geo = await axios.get(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+        { timeout: 6000, headers: { 'User-Agent': 'SilaYoluApp/1.0 (kilincerto@gmail.com)' } }
+      )
+      const postcode = geo.data?.address?.postcode?.slice(0, 2)
+      if (postcode) {
+        const { data: rows } = await axios.get(
+          `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-carburants-quotidien/exports/json?limit=100&refine=dep_code:${postcode}`,
+          { timeout: 10000, headers: { Accept: 'application/json' } }
+        )
+        if (Array.isArray(rows) && rows.length) {
+          const map = {}
+          for (const row of rows) {
+            if (!map[row.id]) map[row.id] = { name: row.ville || 'FR', address: `${row.adresse || ''}, ${row.ville || ''}`.trim(), diesel: null, benzin: null, country: 'fr', updated: 'live 🟢', note: 'Live via prix-carburants.gouv.fr' }
+            const p = parseFloat(row.prix_valeur)
+            if (isNaN(p) || p <= 0) continue
+            if (row.prix_nom === 'Gazole') map[row.id].diesel = p
+            if ((row.prix_nom === 'SP95' || row.prix_nom === 'SP98') && (!map[row.id].benzin || p < map[row.id].benzin)) map[row.id].benzin = p
+          }
+          const stations = Object.entries(map)
+            .filter(([, s]) => s.diesel > 1 && s.diesel < 3)
+            .sort((a, b) => a[1].diesel - b[1].diesel)
+            .slice(0, 5)
+            .map(([id, s], i) => ({ id: `fr_near_${id}`, ...s, cheap: i === 0 }))
+          if (stations.length) return res.json({ stations, source: 'prix-carburants.gouv.fr live 🟢' })
+        }
+      }
+    } catch {}
+  }
+
+  res.json({ stations: [], source: 'unavailable' })
 })
 
 router.get('/country/:code', (req, res) => {
@@ -225,9 +346,10 @@ router.get('/country/:code', (req, res) => {
 
 router.get('/summary', async (req, res) => {
   const tkKey = process.env.TANKERKOENIG_API_KEY
-  const [fueloData, liveDE] = await Promise.all([
+  const [fueloData, liveDE, liveFRsum] = await Promise.all([
     getAllFueloPrices(),
     tkKey ? fetchDE(tkKey) : null,
+    fetchFR(),
   ])
 
   const merge = (code, staticP) => {
@@ -249,14 +371,25 @@ router.get('/summary', async (req, res) => {
     deSource = 'Tankerkönig live 🟢'
   }
 
+  let frDiesel = STATIC_PRICES.fr.diesel, frBenzin = STATIC_PRICES.fr.benzin, frSource = 'statisch'
+  if (liveFRsum?.length) {
+    const diesels = liveFRsum.map(s => s.diesel).filter(Boolean)
+    const benzins = liveFRsum.map(s => s.benzin).filter(Boolean)
+    if (diesels.length) frDiesel = Math.round(diesels.reduce((a, b) => a + b) / diesels.length * 1000) / 1000
+    if (benzins.length) frBenzin = Math.round(benzins.reduce((a, b) => a + b) / benzins.length * 1000) / 1000
+    frSource = 'prix-carburants.gouv.fr live 🟢'
+  }
+
   res.json({
     summary: [
       { country: 'Deutschland', flag: '🇩🇪', code: 'de', diesel: deDiesel, benzin: deBenzin, trend: 'stable', source: deSource },
+      { country: 'Frankreich',  flag: '🇫🇷', code: 'fr', diesel: frDiesel, benzin: frBenzin, trend: 'stable', source: frSource },
       { country: 'Österreich',  flag: '🇦🇹', code: 'at', diesel: 1.749, benzin: 1.699, trend: 'stable', source: 'e-control.at' },
       { country: 'Ungarn',      flag: '🇭🇺', code: 'hu', ...merge('hu', STATIC_PRICES.hu) },
       { country: 'Serbien',     flag: '🇷🇸', code: 'rs', ...merge('rs', STATIC_PRICES.rs) },
       { country: 'Bulgarien',   flag: '🇧🇬', code: 'bg', ...merge('bg', STATIC_PRICES.bg) },
       { country: 'Türkei',      flag: '🇹🇷', code: 'tr', ...merge('tr', STATIC_PRICES.tr) },
+      { country: 'Griechenland',flag: '🇬🇷', code: 'gr', ...merge('gr', STATIC_PRICES.gr) },
     ],
     tip: 'Tipp: In Serbien voll tanken – günstigste Preise auf der Route!',
   })
