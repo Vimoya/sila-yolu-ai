@@ -441,30 +441,34 @@ export default function RoutePage() {
                         <div className="text-[10px]" style={{ color: textMuted }}>KI berechnet…</div>
                       )}
                     </div>
-                    {(aiTankStops?.length > 0 ? aiTankStops : selectedResult.tankStops).map((s, i, arr) => (
-                      <div key={i} className="flex items-start gap-3 py-2.5"
-                        style={{ borderBottom: i < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
-                        <span className="text-lg mt-0.5">{s.flag}</span>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold" style={{ color: textMain }}>{s.city}</span>
-                            <div className="flex items-center gap-2">
-                              {s.price != null && (
-                                <span className="text-xs font-black" style={{ color: '#4ade80' }}>{s.price.toFixed(2)} €/L</span>
-                              )}
-                              <span className="text-xs" style={{ color: textMuted }}>~{s.km?.toLocaleString()} km</span>
+                    {(aiTankStops?.length > 0 ? aiTankStops : selectedResult.tankStops).map((s, i, arr) => {
+                      const price = typeof s.price === 'number' ? s.price : parseFloat(s.price)
+                      const isTip = s.tip === true
+                      const text = typeof s.reason === 'string' ? s.reason : typeof s.note === 'string' ? s.note : ''
+                      const action = typeof s.action === 'string' ? s.action : ''
+                      return (
+                        <div key={i} className="flex items-start gap-3 py-2.5"
+                          style={{ borderBottom: i < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
+                          <span className="text-lg mt-0.5">{s.flag}</span>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-semibold" style={{ color: textMain }}>{s.city}</span>
+                              <div className="flex items-center gap-2">
+                                {!isNaN(price) && price > 0 && (
+                                  <span className="text-xs font-black" style={{ color: '#4ade80' }}>{price.toFixed(2)} €/L</span>
+                                )}
+                                <span className="text-xs" style={{ color: textMuted }}>~{s.km?.toLocaleString()} km</span>
+                              </div>
                             </div>
+                            {action ? <div className="text-xs font-semibold mt-0.5" style={{ color: '#fbbf24' }}>{action}</div> : null}
+                            {text ? <div className="text-xs mt-0.5" style={{ color: isTip ? '#4ade80' : textMuted }}>{text}</div> : null}
+                            {s.liters > 0 && (
+                              <div className="text-xs mt-0.5" style={{ color: 'rgba(96,165,250,0.8)' }}>Empfehlung: {s.liters}L tanken</div>
+                            )}
                           </div>
-                          {s.action && (
-                            <div className="text-xs font-semibold mt-0.5" style={{ color: '#fbbf24' }}>{s.action}</div>
-                          )}
-                          <div className="text-xs mt-0.5" style={{ color: s.tip ? '#4ade80' : textMuted }}>{s.reason || s.note}</div>
-                          {s.liters && (
-                            <div className="text-xs mt-0.5" style={{ color: 'rgba(96,165,250,0.8)' }}>Empfehlung: {s.liters}L tanken</div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 
