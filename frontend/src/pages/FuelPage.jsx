@@ -193,24 +193,44 @@ const StationsMap = memo(function StationsMap({ stations, userPos }) {
 
 const SORT_OPTS = ['Diesel', 'Benzin', 'Entfernung', 'Name']
 
+const COOLDOWN_MS = 90 * 60 * 1000 // 1.5 Stunden
+
 export default function FuelPage() {
-  const { lastPosition, setLastPosition } = useStore()
+  const { user, lastPosition, setLastPosition, fuelLastSearch, fuelLastSearchAt, setFuelLastSearch } = useStore()
   const [userPos, setUserPos] = useState(lastPosition ? { lat: lastPosition.lat, lng: lastPosition.lng } : null)
   const [locationLabel, setLocationLabel] = useState(lastPosition?.city || 'Standort ermitteln...')
   const [gpsLoading, setGpsLoading] = useState(false)
-  const [stations, setStations] = useState([])
+  const [stations, setStations] = useState(fuelLastSearch?.stations || [])
   const [loading, setLoading] = useState(false)
-  const [avgPrices, setAvgPrices] = useState({ diesel: null, e10: null, e5: null })
+  const [avgPrices, setAvgPrices] = useState(fuelLastSearch?.avgPrices || { diesel: null, e10: null, e5: null })
   const [sort, setSort] = useState('Diesel')
-  const [searchQ, setSearchQ] = useState('')
+  const [searchQ, setSearchQ] = useState(fuelLastSearch?.query || '')
   const [searchFocus, setSearchFocus] = useState(false)
   const [suggestions, setSuggestions] = useState([])
-  const [source, setSource] = useState('')
+  const [source, setSource] = useState(fuelLastSearch?.source || '')
   const [error, setError] = useState(null)
+  const [cooldownLeft, setCooldownLeft] = useState(0)
   const searchRef = useRef(null)
   const debounceRef = useRef(null)
+  const cooldownRef = useRef(null)
+
+  // Cooldown timer tick
+  useEffect(() => {
+    function tick() {
+      if (!fuelLastSearchAt) { setCooldownLeft(0); return }
+      const left = Math.max(0, COOLDOWN_MS - (Date.now() - fuelLastSearchAt))
+      setCooldownLeft(left)
+    }
+    tick()
+    cooldownRef.current = setInterval(tick, 10000)
+    return () => clearInterval(cooldownRef.current)
+  }, [fuelLastSearchAt])
+
+  const cooldownMins = Math.ceil(cooldownLeft / 60000)
 
   const fetchStations = useCallback(async (lat, lng, label) => {
+    if (!user) return
+    if (cooldownLeft > 0) return
     setLoading(true)
     setError(null)
     try {
@@ -219,14 +239,15 @@ export default function FuelPage() {
       if (data.stations?.length) {
         setStations(data.stations)
         setSource(data.source || 'Tankerkönig')
-        // Calc avg prices
         const ds = data.stations.map(s => s.diesel).filter(Boolean)
         const bs = data.stations.map(s => s.benzin ?? s.e5).filter(Boolean)
-        setAvgPrices({
+        const avg = {
           diesel: ds.length ? (ds.reduce((a, b) => a + b) / ds.length).toFixed(3) : null,
           e10: null,
           e5: bs.length ? (bs.reduce((a, b) => a + b) / bs.length).toFixed(3) : null,
-        })
+        }
+        setAvgPrices(avg)
+        setFuelLastSearch({ query: label || locationLabel, stations: data.stations, avgPrices: avg, source: data.source || 'Tankerkönig' })
       } else {
         setStations([])
         setError('Keine Tankstellen gefunden – bitte anderen Ort eingeben.')
@@ -237,7 +258,7 @@ export default function FuelPage() {
       setLoading(false)
       if (label) setLocationLabel(label)
     }
-  }, [])
+  }, [user, cooldownLeft])
 
   const getGPS = useCallback(() => {
     if (!navigator.geolocation) {
@@ -283,12 +304,12 @@ export default function FuelPage() {
     )
   }, [fetchStations])
 
-  // On mount: load last position immediately, then try to refresh via GPS
+  // On mount: only auto-fetch if logged in, no cooldown, and no cached result
   useEffect(() => {
-    if (lastPosition) {
-      fetchStations(lastPosition.lat, lastPosition.lng)
-    }
-    getGPS()
+    if (!user) return
+    const left = fuelLastSearchAt ? Math.max(0, COOLDOWN_MS - (Date.now() - fuelLastSearchAt)) : 0
+    if (left > 0) return // show cached result, no new request
+    if (!fuelLastSearch) getGPS()
   }, [])
 
   // Search suggestions via Nominatim
@@ -373,12 +394,27 @@ export default function FuelPage() {
         </div>
       </div>
 
+      {/* Not logged in gate */}
+      {!user && (
+        <div style={{
+          ...glass, padding: '24px 20px', marginBottom: 16, textAlign: 'center',
+          border: '1px solid rgba(245,181,68,0.25)',
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⛽</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Anmeldung erforderlich</div>
+          <div style={{ color: 'var(--fg-3)', fontSize: 13, lineHeight: 1.6 }}>
+            Die Tankstellensuche ist nur für registrierte Nutzer verfügbar.<br/>Bitte melde dich an um fortzufahren.
+          </div>
+        </div>
+      )}
+
       {/* Search bar */}
-      <div style={{ position: 'relative', marginBottom: 16 }}>
+      {user && <div style={{ position: 'relative', marginBottom: 16 }}>
         <div style={{
           ...glass,
           padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
           border: searchFocus ? '1px solid rgba(245,181,68,0.45)' : '1px solid rgba(255,255,255,0.08)',
+          opacity: cooldownLeft > 0 ? 0.6 : 1,
         }}>
           <IconSearch size={16} style={{ color: 'var(--fg-3)', flexShrink: 0 }}/>
           <input
@@ -388,7 +424,8 @@ export default function FuelPage() {
             onFocus={() => setSearchFocus(true)}
             onBlur={() => setTimeout(() => setSearchFocus(false), 200)}
             onKeyDown={e => e.key === 'Enter' && handleSearchSubmit()}
-            placeholder="Stadt oder Adresse suchen…"
+            placeholder={cooldownLeft > 0 ? `Neue Suche in ${cooldownMins} Min. möglich…` : 'Stadt oder Adresse suchen…'}
+            disabled={cooldownLeft > 0}
             style={{
               flex: 1, background: 'none', border: 'none', outline: 'none',
               color: 'var(--fg)', fontSize: 14, fontFamily: 'var(--font-body)',
@@ -396,12 +433,12 @@ export default function FuelPage() {
           />
           <button
             onClick={getGPS}
-            disabled={gpsLoading}
+            disabled={gpsLoading || cooldownLeft > 0}
             style={{
               padding: '6px 12px', borderRadius: 10,
               background: gpsLoading ? 'rgba(255,255,255,0.06)' : 'rgba(245,181,68,0.15)',
               border: '1px solid rgba(245,181,68,0.35)',
-              color: 'var(--turkis)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              color: 'var(--turkis)', fontSize: 11, fontWeight: 700, cursor: cooldownLeft > 0 ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
               fontFamily: 'var(--font-body)',
             }}
@@ -409,6 +446,14 @@ export default function FuelPage() {
             <span>{gpsLoading ? '⏳' : '📍'}</span> GPS
           </button>
         </div>
+
+        {/* Cooldown notice */}
+        {cooldownLeft > 0 && (
+          <div style={{ marginTop: 8, padding: '8px 14px', borderRadius: 12, background: 'rgba(245,181,68,0.08)', border: '1px solid rgba(245,181,68,0.2)', fontSize: 12, color: 'var(--turkis)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⏱</span>
+            <span>Nächste Suche in <strong>{cooldownMins} Min.</strong> möglich · Letzte Suche: <strong>{fuelLastSearch?.query}</strong></span>
+          </div>
+        )}
 
         {/* Suggestions dropdown */}
         {suggestions.length > 0 && searchFocus && (
@@ -435,10 +480,10 @@ export default function FuelPage() {
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Avg prices */}
-      <div style={{ marginBottom: 16 }}>
+      {user && <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--fg-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 }}>
           Ø Preise · {locationLabel}
         </div>
@@ -447,7 +492,7 @@ export default function FuelPage() {
           <PumpBig fuel="BENZIN" price={avgPrices.e5}     c="var(--e5)"   loading={loading}/>
           <PumpBig fuel="E10"    price={avgPrices.e10}    c="var(--orange)" loading={loading}/>
         </div>
-      </div>
+      </div>}
 
       {/* Sort chips */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
@@ -554,9 +599,9 @@ export default function FuelPage() {
       )}
 
       {/* Attribution */}
-      <div style={{ textAlign: 'center', color: 'var(--fg-3)', fontSize: 10, paddingBottom: 8 }}>
+      {user && <div style={{ textAlign: 'center', color: 'var(--fg-3)', fontSize: 10, paddingBottom: 8 }}>
         {source ? `Daten via ${source}` : 'Tankerkönig API · Markttransparenzstelle'}
-      </div>
+      </div>}
     </div>
   )
 }

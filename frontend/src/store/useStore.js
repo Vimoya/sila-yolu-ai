@@ -11,6 +11,8 @@ export const useStore = create(
       routeResult: null,
       checklist: {},
       lastPosition: null, // { lat, lng, city, updatedAt }
+      fuelLastSearch: null,   // { query, stations, avgPrices, source, ts }
+      fuelLastSearchAt: null, // timestamp ms
 
       // Route settings — persisted so user doesn't re-enter every time
       routeSettings: {
@@ -26,6 +28,7 @@ export const useStore = create(
       },
 
       setLastPosition: (pos) => set({ lastPosition: pos }),
+      setFuelLastSearch: (data) => set({ fuelLastSearch: data, fuelLastSearchAt: Date.now() }),
       setUser: (user) => set({ user }),
       toggleDark: () => {},
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -42,6 +45,8 @@ export const useStore = create(
         currentRoute: s.currentRoute,
         routeResult: s.routeResult,
         lastPosition: s.lastPosition,
+        fuelLastSearch: s.fuelLastSearch,
+        fuelLastSearchAt: s.fuelLastSearchAt,
       }),
     }
   )
