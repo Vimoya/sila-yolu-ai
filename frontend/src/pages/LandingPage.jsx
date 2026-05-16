@@ -1,253 +1,429 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Map, AlertTriangle, Fuel, Bot, Users, CheckSquare, ChevronRight, Star, Shield, Zap, Clock, Navigation } from 'lucide-react'
-import SilaLogo from '../components/SilaLogo'
+import { ChevronRight } from 'lucide-react'
 
-const glass = {
-  background: 'rgba(255,255,255,0.09)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  backdropFilter: 'blur(20px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-  boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+const gold = '#F5B544'
+const goldGrad = 'linear-gradient(180deg, #FFCC5C, #D49628)'
+const glassBg = 'rgba(255,255,255,0.025)'
+const glassBorder = '1px solid rgba(255,255,255,0.08)'
+
+const btnPrimary = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  padding: '14px 22px', borderRadius: 999,
+  background: goldGrad, color: '#1F1402',
+  border: 'none', fontWeight: 700, fontSize: 15,
+  fontFamily: "'DM Sans', sans-serif", cursor: 'pointer',
+  boxShadow: '0 10px 30px rgba(245,181,68,0.35), inset 0 1px 0 rgba(255,255,255,0.4)',
 }
 
-const FEATURES = [
-  { icon: Map, label: 'Route & Maut', desc: '4 optimierte Routen mit allen Vignetten, Mautgebühren und Tunneln', color: '#60a5fa' },
-  { icon: AlertTriangle, label: 'Live Grenzinfo', desc: 'Echtzeit Wartezeiten an allen Grenzübergängen auf der Strecke', color: '#f59e0b' },
-  { icon: Fuel, label: 'Tankpreise', desc: 'Aktuelle Preise in DE, AT, HU, RS, BG und TR — wann & wo tanken', color: '#34d399' },
-  { icon: Bot, label: 'KI Assistent', desc: 'GPT-4 beantwortet all deine Fragen zur Reise — 24/7', color: '#a78bfa' },
-  { icon: Users, label: 'Community', desc: 'Live Meldungen von anderen Fahrern auf der gleichen Route', color: '#fb7185' },
-  { icon: CheckSquare, label: 'Checkliste', desc: 'Vignetten, Dokumente, Notfallausrüstung — nichts vergessen', color: '#e2e8f0' },
+const btnGhost = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  padding: '13px 20px', borderRadius: 999,
+  background: 'rgba(255,255,255,0.04)', color: '#f5f5f5',
+  border: '1px solid rgba(255,255,255,0.1)',
+  fontWeight: 600, fontSize: 15,
+  fontFamily: "'DM Sans', sans-serif", cursor: 'pointer',
+}
+
+function Logo({ size = 36 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: Math.round(size * 0.33),
+      background: goldGrad,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: '0 6px 18px rgba(245,181,68,0.35)',
+      flexShrink: 0,
+    }}>
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none"
+        stroke="#04060A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19c4-1 4-7 8-7s4 6 8 5" />
+        <circle cx="4" cy="19" r="1.5" fill="#04060A" />
+        <circle cx="20" cy="17" r="1.5" fill="#04060A" />
+      </svg>
+    </div>
+  )
+}
+
+const features = [
+  { t: 'KI-Routenplanung', d: 'Günstigste, schnellste oder komfortabelste Route nach Istanbul, Ankara, Izmir.', emoji: '🗺️' },
+  { t: 'Tankkosten-Rechner', d: 'Genaue Spritkosten basierend auf Fahrzeug, Verbrauch und Live-Preisen.', emoji: '⛽' },
+  { t: 'Maut & Vignetten', d: 'AT, HU, SRB, BG, TR — automatisch in Gesamtkosten eingerechnet.', emoji: '🪙' },
+  { t: 'Live Tankpreise', d: 'Diesel, E5, E10 von 14.000+ deutschen Tankstellen in Echtzeit.', emoji: '📡' },
+  { t: 'Community Chat', d: 'Grenzwartezeiten & Tipps von Reisenden, die gerade unterwegs sind.', emoji: '💬' },
+  { t: 'Türkei-Checkliste', d: 'Grüne Karte, HGS, Fahrzeugvollmacht — vergiss nichts.', emoji: '✅' },
 ]
 
-const ROUTES = [
-  { flags: '🇩🇪→🇦🇹→🇭🇺→🇷🇸→🇧🇬→🇹🇷', name: 'Wien–Budapest Route', km: '~2.150 km', tag: 'Beliebteste' },
-  { flags: '🇩🇪→🇦🇹→🇸🇮→🇭🇷→🇷🇸→🇧🇬→🇹🇷', name: 'Kroatien Route', km: '~2.350 km', tag: 'Scenic' },
-  { flags: '🇩🇪→🇦🇹→🇭🇺→🇷🇴→🇧🇬→🇹🇷', name: 'Rumänien Route', km: '~2.500 km', tag: 'Alternativ' },
-  { flags: '🇩🇪→🇦🇹→🇸🇮→🇷🇸→🇲🇰→🇬🇷→🇹🇷', name: 'Griechenland Route', km: '~2.450 km', tag: 'Via Athen' },
+const routes = [
+  { name: 'Balkan-Klassiker', sub: 'Beliebteste Route', countries: ['DE','AT','HU','RS','BG','TR'], km: '2.380 km', t: '~28 h', cost: '486 €' },
+  { name: 'Adria-Route', sub: 'Über Kroatien', countries: ['DE','AT','SI','HR','RS','BG','TR'], km: '2.540 km', t: '~30 h', cost: '512 €' },
+  { name: 'West-Europa', sub: 'Aus FR / BE / NL', countries: ['FR','DE','AT','HU','RS','BG','TR'], km: '2.890 km', t: '~34 h', cost: '598 €' },
+  { name: 'Insel-Route', sub: 'Aus England', countries: ['GB','FR','BE','DE','AT','HU','RS','BG','TR'], km: '3.420 km', t: '~40 h', cost: '742 €' },
 ]
 
-const STATS = [
-  { icon: Users, value: '12.4K', label: 'Aktive Fahrer' },
-  { icon: Navigation, value: '4', label: 'Routen' },
-  { icon: Clock, value: '24/7', label: 'Live Updates' },
-  { icon: Shield, value: '100%', label: 'Kostenlos' },
+const stats = [
+  { v: '14.000+', l: 'Tankstellen DE' },
+  { v: '5+', l: 'Routen TR' },
+  { v: '8', l: 'Länder' },
+  { v: '~30k', l: 'Community' },
 ]
 
 export default function LandingPage({ onStart }) {
-  const [hoveredFeature, setHoveredFeature] = useState(null)
-
   return (
-    <div className="min-h-screen overflow-x-hidden"
-      style={{ background: 'linear-gradient(135deg, #060610 0%, #0a0a1a 50%, #060610 100%)' }}>
+    <div style={{
+      minHeight: '100vh', overflowX: 'hidden',
+      background: '#04060A', color: '#f5f5f5',
+      fontFamily: "'DM Sans', sans-serif", position: 'relative',
+    }}>
+      {/* Aurora */}
+      <div style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: `
+          radial-gradient(40% 30% at 20% 10%, rgba(245,181,68,0.18), transparent 70%),
+          radial-gradient(35% 28% at 80% 20%, rgba(77,168,255,0.14), transparent 70%),
+          radial-gradient(30% 20% at 50% 0%, rgba(255,138,61,0.08), transparent 70%)
+        `,
+        filter: 'blur(20px)',
+      }} />
 
-      {/* Ambient background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-15%', left: '20%', width: 700, height: 500, background: 'radial-gradient(ellipse, rgba(80,40,255,0.07) 0%, transparent 60%)' }} />
-        <div style={{ position: 'absolute', top: '30%', right: '-10%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(40,100,255,0.05) 0%, transparent 60%)' }} />
-        <div style={{ position: 'absolute', bottom: '10%', left: '-5%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(255,60,100,0.04) 0%, transparent 60%)' }} />
-      </div>
-
-      <div className="relative z-10 max-w-sm mx-auto px-5">
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 420, margin: '0 auto', padding: '0 20px' }}>
 
         {/* Nav */}
-        <div className="flex items-center justify-between pt-8 pb-6">
-          <div className="flex items-center gap-2.5">
-            <SilaLogo size={32} />
-            <span className="font-black text-lg" style={{ color: '#f5f5f5' }}>Sıla Yolu <span style={{ color: 'rgba(255,255,255,0.4)' }}>AI</span></span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 0 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Logo size={34} />
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17, letterSpacing: -0.3 }}>
+              Sıla Yolu <span style={{ color: gold }}>Pro</span>
+            </span>
           </div>
-          <motion.button whileTap={{ scale: 0.96 }} onClick={onStart}
-            className="text-sm font-semibold px-4 py-2 rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            Login
+          <motion.button whileTap={{ scale: 0.95 }} onClick={onStart}
+            style={{ ...btnGhost, padding: '9px 16px', fontSize: 13 }}>
+            Anmelden
           </motion.button>
         </div>
 
         {/* Hero */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-          className="text-center py-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6"
-            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
-            <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>12.4K Fahrer aktiv</span>
+        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+          style={{ paddingTop: 16, paddingBottom: 32 }}>
+
+          {/* Badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '6px 12px 6px 8px', borderRadius: 999,
+            background: 'rgba(245,181,68,0.10)', color: gold,
+            border: '1px solid rgba(245,181,68,0.25)',
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.4, marginBottom: 18,
+          }}>
+            <span style={{ background: gold, color: '#1F1402', padding: '2px 7px', borderRadius: 999, fontSize: 9, letterSpacing: 0.6 }}>YENİ</span>
+            Live Spritpreise · 14.000+ Tankstellen
           </div>
 
-          <h1 className="text-4xl font-black leading-tight mb-4" style={{ color: '#f5f5f5' }}>
-            München bis<br />
-            <span style={{ color: 'rgba(255,255,255,0.45)' }}>İstanbul</span>
+          <h1 style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontWeight: 700, fontSize: 42, lineHeight: 1.05, letterSpacing: -1.5, margin: '0 0 14px',
+          }}>
+            Plane deine{' '}
+            <span style={{
+              backgroundImage: 'linear-gradient(120deg, #FFE08A 0%, #F5B544 45%, #C58418 100%)',
+              WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+            }}>Sıla Yolu</span>
+            {' '}smarter.
           </h1>
-          <p className="text-base mb-8 leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Der smarte Reiseassistent für Sıla Yolu — Route, Vignetten, Grenzwartezeiten und KI-Tipps in einer App.
+
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, lineHeight: 1.55, margin: '0 0 26px' }}>
+            Route, Tankkosten, Maut, Vignetten, Community und Türkei-Checkliste — alles in einer App.
           </p>
 
-          {/* CTA */}
-          <motion.button whileTap={{ scale: 0.96 }} onClick={onStart}
-            className="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 mb-3"
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              color: '#f5f5f5',
-              border: '1px solid rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(12px)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.4)',
-            }}>
-            <Zap size={18} /> Jetzt kostenlos starten
-          </motion.button>
-          <button onClick={onStart}
-            className="text-sm" style={{ color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}>
-            Kein Konto? Als Gast fortfahren →
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onStart}
+              style={{ ...btnPrimary, width: '100%', justifyContent: 'center', fontSize: 15 }}>
+              Route berechnen <ChevronRight size={16} />
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onStart}
+              style={{ ...btnGhost, width: '100%', justifyContent: 'center' }}>
+              Kostenlos registrieren
+            </motion.button>
+          </div>
+
+          {/* Stars */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
+            <div style={{ display: 'flex' }}>
+              {['#F5B544','#D49628','#8C5F12','#3F2A06'].map((c, i) => (
+                <div key={i} style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${c}, #0A0C10)`,
+                  marginLeft: i ? -7 : 0, border: '2px solid #04060A',
+                }} />
+              ))}
+            </div>
+            <div>
+              <div style={{ display: 'flex', gap: 1, color: '#FFB400', fontSize: 12 }}>{'★★★★★'}</div>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 1 }}>
+                <strong style={{ color: '#f5f5f5' }}>4.9</strong> · 2.840 Bewertungen
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Phone mockup */}
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.7 }}
-          className="relative mx-auto mb-10" style={{ width: 220 }}>
-          {/* Phone frame */}
-          <div className="rounded-[32px] p-[2px]"
-            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04))', boxShadow: '0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
-            <div className="rounded-[30px] overflow-hidden" style={{ background: '#0a0a14', minHeight: 380 }}>
-              {/* Status bar */}
-              <div className="flex justify-between items-center px-5 pt-3 pb-2">
-                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.4)' }}>9:41</span>
-                <div className="flex gap-1">
-                  {[...Array(3)].map((_, i) => <div key={i} className="rounded-sm" style={{ width: 4, height: 4 + i * 2, background: 'rgba(255,255,255,0.4)' }} />)}
+          style={{ position: 'relative', margin: '0 auto 32px', width: 240, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{
+            position: 'absolute', width: 280, height: 280, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(245,181,68,0.28), transparent 60%)',
+            filter: 'blur(30px)',
+          }} />
+          <div style={{
+            width: 220, borderRadius: 36,
+            background: '#04060A', position: 'relative', overflow: 'hidden',
+            boxShadow: '0 40px 80px rgba(0,0,0,0.6), 0 0 0 5px #0A0C10, 0 0 0 6px rgba(255,255,255,0.08)',
+          }}>
+            {/* Dynamic island */}
+            <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', width: 80, height: 20, borderRadius: 12, background: '#000', zIndex: 5 }} />
+            {/* Mini dashboard */}
+            <div style={{ padding: '36px 14px 22px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px' }}>
+                <div>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Hoş geldin, Mehmet</div>
+                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, marginTop: 1 }}>Sıla Yolu 2026</div>
                 </div>
               </div>
-              {/* Mock route card */}
-              <div className="px-3 pb-4">
-                <div className="text-sm font-black mb-2 px-1" style={{ color: '#f5f5f5' }}>Route berechnen</div>
-                <div className="rounded-2xl p-3 mb-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="text-[9px] mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>STARTORT</div>
-                  <div className="text-xs font-semibold" style={{ color: '#f5f5f5' }}>🇩🇪 München</div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '10px 12px' }}>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Gesamtkosten</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, marginTop: 1 }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 28, color: gold, letterSpacing: -1 }}>486</span>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600 }}>€</span>
+                  <span style={{ marginLeft: 'auto', color: '#38E58A', fontSize: 8, fontWeight: 700 }}>-12% vs. 2024</span>
                 </div>
-                <div className="rounded-2xl p-3 mb-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="text-[9px] mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>ZIELORT</div>
-                  <div className="text-xs font-semibold" style={{ color: '#f5f5f5' }}>🇹🇷 Istanbul</div>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 mb-2">
-                  {[['2.150 km', 'Distanz'], ['~22h', 'Fahrzeit'], ['186 €', 'Sprit'], ['244 €', 'Gesamt']].map(([v, l]) => (
-                    <div key={l} className="rounded-xl p-2 text-center" style={{ background: 'rgba(255,255,255,0.09)' }}>
-                      <div className="text-[10px] font-black" style={{ color: '#f5f5f5' }}>{v}</div>
-                      <div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{l}</div>
-                    </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {[['Sprit','312 €','#38E58A'],['Maut','94 €','#FF8A3D'],['Vignette','58 €','#4DA8FF'],['Pause','22 €', gold]].map(([k, v, c]) => (
+                  <div key={k} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '7px 9px' }}>
+                    <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 700 }}>{k}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13, color: c, marginTop: 1 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Country strip */}
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '9px 10px' }}>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 7, fontWeight: 700, textTransform: 'uppercase' }}>Route</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                  {[['DE','#f5f5f5'],['AT','#FF8A3D'],['HU','#38E58A'],['RS','#4DA8FF'],['BG','#E854A8'],['TR', gold]].map(([c, col], i) => (
+                    <span key={c}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 18, height: 13, borderRadius: 3, background: 'rgba(255,255,255,0.05)',
+                        border: `1px solid ${col}55`, color: col, fontSize: 6, fontWeight: 800,
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}>{c}</span>
+                      {i < 5 && <span style={{ display: 'inline-block', width: 6, height: 1, background: 'rgba(255,255,255,0.1)', margin: '0 1px' }} />}
+                    </span>
                   ))}
-                </div>
-                <div className="rounded-xl py-2 text-center text-[10px] font-bold" style={{ background: 'rgba(255,255,255,0.08)', color: '#f5f5f5' }}>
-                  ⚡ Route berechnen
                 </div>
               </div>
             </div>
           </div>
-          {/* Reflection glow */}
-          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 rounded-full"
-            style={{ width: 140, height: 20, background: 'rgba(100,80,255,0.15)', filter: 'blur(16px)' }} />
+          {/* Floating price card */}
+          <div style={{
+            position: 'absolute', top: 40, right: -20, transform: 'rotate(5deg)',
+            background: 'rgba(10,12,16,0.85)', backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '10px 12px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)', width: 110,
+          }}>
+            <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: 0.5, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 6 }}>
+              Live · Shell
+            </div>
+            {[['Diesel','1,67','#38E58A'],['E10','1,74','#FFB400'],['E5','1,80','#4DA8FF']].map(([k, v, c]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{k}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13, color: c }}>{v}</span>
+              </div>
+            ))}
+          </div>
         </motion.div>
 
-        {/* Stats */}
+        {/* Stats strip */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-          className="grid grid-cols-4 gap-2 mb-10">
-          {STATS.map((s, i) => {
-            const Icon = s.icon
-            return (
-              <div key={i} className="rounded-2xl p-3 text-center" style={glass}>
-                <div className="font-black text-sm" style={{ color: '#f5f5f5' }}>{s.value}</div>
-                <div className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.label}</div>
-              </div>
-            )
-          })}
+          style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 36,
+            background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 20, padding: 16,
+          }}>
+          {stats.map(s => (
+            <div key={s.l} style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 18, color: gold, letterSpacing: -0.5 }}>{s.v}</div>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2, fontWeight: 500 }}>{s.l}</div>
+            </div>
+          ))}
         </motion.div>
 
         {/* Features */}
-        <div className="mb-10">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-xl font-black" style={{ color: '#f5f5f5' }}>Alles in einer App</h2>
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ color: gold, fontWeight: 700, fontSize: 11, letterSpacing: 1.4, marginBottom: 8 }}>ALLES IN EINER APP</div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26, letterSpacing: -0.8, lineHeight: 1.1, marginBottom: 6 }}>
+            Sechs Werkzeuge,<br />ein Ziel.
           </div>
-          <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.35)' }}>Alles was du für Sıla Yolu brauchst</p>
-          <div className="grid grid-cols-2 gap-3">
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon
-              const isHovered = hoveredFeature === i
-              return (
-                <motion.div key={i}
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
-                  onMouseEnter={() => setHoveredFeature(i)} onMouseLeave={() => setHoveredFeature(null)}
-                  className="rounded-2xl p-4"
-                  style={{
-                    background: isHovered ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${isHovered ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)'}`,
-                    backdropFilter: 'blur(16px)',
-                    boxShadow: isHovered ? '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)' : 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                    transition: 'all 0.2s ease',
-                    cursor: 'default',
-                  }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <Icon size={17} style={{ color: f.color }} />
-                  </div>
-                  <div className="font-bold text-sm mb-1" style={{ color: '#f5f5f5' }}>{f.label}</div>
-                  <div className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>{f.desc}</div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Routes */}
-        <div className="mb-10">
-          <h2 className="text-xl font-black mb-1" style={{ color: '#f5f5f5' }}>4 Routen</h2>
-          <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.35)' }}>Inkl. Kosten, Vignetten & Maut</p>
-          <div className="flex flex-col gap-2">
-            {ROUTES.map((r, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 * i }}
-                className="rounded-2xl p-3.5 flex items-center justify-between" style={glass}>
-                <div>
-                  <div className="text-sm mb-0.5" style={{ color: '#f5f5f5' }}>{r.flags}</div>
-                  <div className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>{r.name} · {r.km}</div>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full ml-2 shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  {r.tag}
-                </span>
+          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, marginBottom: 20 }}>Stressfrei in die Heimat.</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {features.map((f, i) => (
+              <motion.div key={f.t}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 * i }}
+                style={{
+                  position: 'relative', overflow: 'hidden',
+                  background: glassBg, backdropFilter: 'blur(20px)',
+                  border: glassBorder, borderRadius: 20, padding: 16,
+                }}>
+                <div style={{
+                  position: 'absolute', top: -40, right: -40, width: 100, height: 100, borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(245,181,68,0.15), transparent 70%)',
+                  pointerEvents: 'none',
+                }} />
+                <div style={{ fontSize: 24, marginBottom: 10 }}>{f.emoji}</div>
+                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: -0.3, marginBottom: 4 }}>{f.t}</div>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, lineHeight: 1.45 }}>{f.d}</div>
               </motion.div>
             ))}
           </div>
         </div>
 
+        {/* Routes */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ color: gold, fontWeight: 700, fontSize: 11, letterSpacing: 1.4, marginBottom: 8 }}>FÜR ALLE WEGE IN DIE TÜRKEI</div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26, letterSpacing: -0.8, lineHeight: 1.1, marginBottom: 20 }}>
+            Fünf Reise­szenarien.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {routes.map((r, i) => (
+              <motion.div key={r.name}
+                initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.08 * i }}
+                style={{
+                  background: glassBg, backdropFilter: 'blur(20px)',
+                  border: i === 0 ? `1px solid rgba(245,181,68,0.35)` : glassBorder,
+                  borderRadius: 20, padding: '14px 16px',
+                  boxShadow: i === 0 ? '0 8px 30px rgba(245,181,68,0.12)' : 'none',
+                }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ color: i === 0 ? gold : 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' }}>{r.sub}</div>
+                    <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: -0.3, marginTop: 2 }}>{r.name}</div>
+                  </div>
+                  <div style={{
+                    background: i === 0 ? 'rgba(245,181,68,0.15)' : 'rgba(255,255,255,0.06)',
+                    color: i === 0 ? gold : 'rgba(255,255,255,0.5)',
+                    padding: '6px 11px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                    border: `1px solid ${i === 0 ? 'rgba(245,181,68,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>ab {r.cost}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                  {r.countries.map((c, ci) => (
+                    <span key={c + ci}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 30, height: 21, borderRadius: 5, background: 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${ci === 0 || ci === r.countries.length - 1 ? (i === 0 ? 'rgba(245,181,68,0.5)' : 'rgba(255,255,255,0.25)') : 'rgba(255,255,255,0.1)'}`,
+                        color: ci === 0 || ci === r.countries.length - 1 ? (i === 0 ? gold : 'rgba(255,255,255,0.7)') : 'rgba(255,255,255,0.4)',
+                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, fontSize: 9,
+                      }}>{c}</span>
+                      {ci < r.countries.length - 1 && <span style={{ display: 'inline-block', width: 10, height: 1, background: 'rgba(255,255,255,0.15)', margin: '0 1px' }} />}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+                  <span>📍 {r.km}</span>
+                  <span>⏱ {r.t}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mockup trio — fuel prices */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ color: gold, fontWeight: 700, fontSize: 11, letterSpacing: 1.4, marginBottom: 8 }}>LIVE SPRITPREISE</div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26, letterSpacing: -0.8, lineHeight: 1.1, marginBottom: 20 }}>
+            Große Zahlen.<br />Echtzeit-Daten.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[['Diesel','1,67','-3','#38E58A'],['E10','1,74','+1','#FFB400'],['E5','1,80','-2','#4DA8FF']].map(([fuel, price, trend, c]) => {
+              const isUp = trend.startsWith('+')
+              return (
+                <div key={fuel} style={{
+                  background: 'rgba(10,12,16,0.7)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 20, padding: '16px 18px', backdropFilter: 'blur(20px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  boxShadow: `inset 0 0 0 1px ${c}22`,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.2, color: c, textTransform: 'uppercase' }}>{fuel}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>Ø DE · heute</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 40, color: c, letterSpacing: -1, lineHeight: 1, textShadow: `0 0 20px ${c}55` }}>{price}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 15, fontWeight: 700 }}>€</span>
+                  </div>
+                  <div style={{
+                    padding: '5px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    background: isUp ? 'rgba(255,138,61,0.15)' : 'rgba(56,229,138,0.15)',
+                    color: isUp ? '#FF8A3D' : '#38E58A',
+                    border: `1px solid ${isUp ? 'rgba(255,138,61,0.4)' : 'rgba(56,229,138,0.4)'}`,
+                  }}>{trend} ct</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Social proof */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          className="rounded-3xl p-5 mb-10" style={glass}>
-          <div className="flex items-center gap-1 mb-3">
-            {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="rgba(255,200,60,0.8)" color="transparent" />)}
-            <span className="text-xs ml-1 font-bold" style={{ color: 'rgba(255,200,60,0.7)' }}>4.9</span>
-          </div>
-          <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            "Endlich eine App die wirklich alle Kosten für Sıla Yolu zeigt — Vignetten, Maut, Sprit alles zusammen. Hat mir viel Zeit und Geld gespart!"
+          style={{ background: glassBg, border: glassBorder, borderRadius: 24, padding: 20, marginBottom: 36, backdropFilter: 'blur(20px)' }}>
+          <div style={{ display: 'flex', gap: 2, color: '#FFB400', marginBottom: 10, fontSize: 14 }}>{'★★★★★'}</div>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 1.55, margin: '0 0 14px' }}>
+            "Endlich eine App die wirklich alle Kosten zeigt — Vignetten, Maut, Sprit alles zusammen. Hat mir viel gespart!"
           </p>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: 'rgba(255,255,255,0.08)' }}>A</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${gold}, #D49628)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#1F1402' }}>A</div>
             <div>
-              <div className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>Ahmet K.</div>
-              <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>München → Istanbul</div>
+              <div style={{ fontSize: 12, fontWeight: 700 }}>Ahmet K.</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>München → Istanbul</div>
             </div>
           </div>
         </motion.div>
 
         {/* Final CTA */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          className="pb-10 text-center">
-          <h2 className="text-2xl font-black mb-2" style={{ color: '#f5f5f5' }}>Bereit für die Reise?</h2>
-          <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.35)' }}>Kostenlos · Kein Abo · Sofort starten</p>
-          <motion.button whileTap={{ scale: 0.96 }} onClick={onStart}
-            className="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2"
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              color: '#f5f5f5',
-              border: '1px solid rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(12px)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.4)',
-            }}>
-            <ChevronRight size={18} /> App starten
-          </motion.button>
+          style={{
+            position: 'relative', overflow: 'hidden',
+            borderRadius: 28, padding: '32px 24px', marginBottom: 40,
+            background: 'linear-gradient(120deg, rgba(245,181,68,0.18), rgba(245,181,68,0.04) 60%, rgba(255,255,255,0.04))',
+            border: '1px solid rgba(255,255,255,0.10)',
+          }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 50% 0%, rgba(245,181,68,0.18), transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative' }}>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26, letterSpacing: -0.8, marginBottom: 8 }}>
+              Bereit für deine nächste Sıla Yolu?
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 20 }}>
+              Erstelle deine erste Route in zwei Minuten. Kostenlos, ohne Kreditkarte.
+            </div>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onStart}
+              style={{ ...btnPrimary, width: '100%', justifyContent: 'center' }}>
+              Route berechnen <ChevronRight size={16} />
+            </motion.button>
+          </div>
         </motion.div>
+
+        {/* Footer */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 0 32px', color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Logo size={22} />
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, color: '#f5f5f5' }}>Sıla Yolu Pro</span>
+            <span>· © 2026 Made for the road home</span>
+          </div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {['Impressum', 'Datenschutz', 'AGB', 'Kontakt'].map(x => <span key={x}>{x}</span>)}
+          </div>
+        </div>
+
       </div>
     </div>
   )
