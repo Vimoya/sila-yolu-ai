@@ -196,7 +196,7 @@ const SORT_OPTS = ['Diesel', 'Benzin', 'Entfernung', 'Name']
 const COOLDOWN_MS = 90 * 60 * 1000 // 1.5 Stunden
 
 export default function FuelPage() {
-  const { user, lastPosition, setLastPosition, fuelLastSearch, fuelLastSearchAt, setFuelLastSearch } = useStore()
+  const { user, lastPosition, setLastPosition, fuelLastSearch, fuelLastSearchAt, setFuelLastSearch, setActiveTab } = useStore()
   const [userPos, setUserPos] = useState(lastPosition ? { lat: lastPosition.lat, lng: lastPosition.lng } : null)
   const [locationLabel, setLocationLabel] = useState(lastPosition?.city || 'Standort ermitteln...')
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -398,14 +398,21 @@ export default function FuelPage() {
       {/* Not logged in gate */}
       {!user && (
         <div style={{
-          ...glass, padding: '24px 20px', marginBottom: 16, textAlign: 'center',
+          ...glass, padding: '20px', marginBottom: 16,
           border: '1px solid rgba(245,181,68,0.25)',
+          display: 'flex', alignItems: 'center', gap: 14,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⛽</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Anmeldung erforderlich</div>
-          <div style={{ color: 'var(--fg-3)', fontSize: 13, lineHeight: 1.6 }}>
-            Die Tankstellensuche ist nur für registrierte Nutzer verfügbar.<br/>Bitte melde dich an um fortzufahren.
+          <div style={{ fontSize: 28, flexShrink: 0 }}>⛽</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Anmeldung erforderlich</div>
+            <div style={{ color: 'var(--fg-3)', fontSize: 12, lineHeight: 1.5 }}>Neue Suche nur für registrierte Nutzer</div>
           </div>
+          <button onClick={() => setActiveTab('profile')} style={{
+            padding: '9px 16px', borderRadius: 12, flexShrink: 0,
+            background: 'linear-gradient(180deg, #FFCC5C, #D49628)',
+            color: '#1F1402', fontWeight: 800, fontSize: 13,
+            border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
+          }}>Anmelden</button>
         </div>
       )}
 
@@ -483,8 +490,8 @@ export default function FuelPage() {
         )}
       </div>}
 
-      {/* Avg prices */}
-      {user && <div style={{ marginBottom: 16 }}>
+      {/* Avg prices — show cached result even when logged out */}
+      {(user || fuelLastSearch) && <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--fg-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 }}>
           Ø Preise · {locationLabel}
         </div>
@@ -600,7 +607,7 @@ export default function FuelPage() {
       )}
 
       {/* Attribution */}
-      {user && <div style={{ textAlign: 'center', color: 'var(--fg-3)', fontSize: 10, paddingBottom: 8 }}>
+      {(user || fuelLastSearch) && <div style={{ textAlign: 'center', color: 'var(--fg-3)', fontSize: 10, paddingBottom: 8 }}>
         {source ? `Daten via ${source}` : 'Tankerkönig API · Markttransparenzstelle'}
       </div>}
     </div>
