@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, ChevronDown, Map, Navigation, Clock, Fuel, Euro, Loader2, MapPin, Zap, AlertCircle } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
-const API = import.meta.env.VITE_API_BASE_URL || 'https://sila-yolu-ai-production.up.railway.app'
+const API = import.meta.env.VITE_API_BASE_URL || ''
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org'
 
