@@ -464,30 +464,38 @@ export default function FuelPage() {
         ))}
       </div>
 
-      {/* Cheapest per fuel type */}
+      {/* Cheapest station highlight */}
       {!loading && stations.length > 0 && (() => {
-        const cheapOf = (key) => [...stations].filter(s => s[key] != null).sort((a, b) => a[key] - b[key])[0]
-        const rows = [
-          { key: 'diesel', label: 'DIESEL',  color: 'var(--gruen)'  },
-          { key: 'e5',     label: 'E5',      color: 'var(--e5)'     },
-          { key: 'e10',    label: 'E10',     color: 'var(--orange)' },
-          { key: 'benzin', label: 'BENZIN',  color: '#B388FF'       },
-        ].map(r => ({ ...r, station: cheapOf(r.key) })).filter(r => r.station)
-        if (!rows.length) return null
+        const best = [...stations].filter(s => s.diesel != null).sort((a, b) => a.diesel - b.diesel)[0] || stations[0]
+        if (!best) return null
+        const prices = []
+        if (best.diesel != null) prices.push(['DIESEL', best.diesel, 'var(--gruen)'])
+        if (best.e5    != null) prices.push(['E5',     best.e5,     'var(--e5)'])
+        if (best.e10   != null) prices.push(['E10',    best.e10,    'var(--orange)'])
+        if (best.benzin != null && best.e5 == null && best.e10 == null) prices.push(['BENZIN', best.benzin, '#B388FF'])
         return (
-          <div style={{ ...glass, background: 'rgba(56,229,138,0.04)', border: '1px solid rgba(56,229,138,0.2)', padding: '14px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>⛽ Günstigste im 5 km Radius</div>
-            {rows.map(({ key, label, color, station }) => (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: key !== rows[rows.length - 1].key ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                <div style={{ width: 44, padding: '4px 0', borderRadius: 8, background: `${color}18`, border: `1px solid ${color}33`, textAlign: 'center', fontSize: 9, fontWeight: 800, color, letterSpacing: 0.5, flexShrink: 0 }}>{label}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{station.name}</div>
-                  <div style={{ color: 'var(--fg-3)', fontSize: 11 }}>{station.dist ? `${Number(station.dist).toFixed(1)} km` : station.address}</div>
-                </div>
-                <div className="sy-pump" style={{ fontSize: 20, color, fontWeight: 800, flexShrink: 0 }}>{Number(station[key]).toFixed(3)}<span style={{ fontSize: 10, opacity: 0.6 }}> €</span></div>
-                <button onClick={() => openNav(station)} style={{ padding: '5px 10px', borderRadius: 10, background: color, color: '#04060A', fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>Nav</button>
+          <div style={{ ...glass, background: 'rgba(56,229,138,0.04)', border: '1px solid rgba(56,229,138,0.25)', padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gruen)', boxShadow: '0 0 8px var(--gruen)' }}/>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.8, textTransform: 'uppercase' }}>Günstigste Tankstelle in der Nähe</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{best.name}</div>
+                <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>{best.address}{best.dist ? ` · ${Number(best.dist).toFixed(1)} km` : ''}</div>
               </div>
-            ))}
+              <button onClick={() => openNav(best)} style={{ padding: '8px 14px', borderRadius: 12, background: 'var(--gruen)', color: '#04060A', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0 }}>Nav</button>
+            </div>
+            {prices.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                {prices.map(([label, val, color]) => (
+                  <div key={label} style={{ flex: 1, padding: '7px 6px', borderRadius: 10, background: `${color}12`, border: `1px solid ${color}33`, textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, color, letterSpacing: 0.5 }}>{label}</div>
+                    <div className="sy-pump" style={{ fontSize: 17, color, marginTop: 2 }}>{Number(val).toFixed(3)}<span style={{ fontSize: 9, opacity: 0.6 }}> €</span></div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )
       })()}
