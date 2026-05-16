@@ -1,319 +1,411 @@
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { useEffect, useState } from 'react'
-import { Map, AlertTriangle, Fuel, Bot, Users, CheckSquare, ChevronRight, TrendingUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import SilaLogo from '../components/SilaLogo'
+import { IconBell, IconArrow, IconRoute, IconFuel, IconChat, IconCardSm } from '../components/Icons'
 
-const features = [
-  { icon: AlertTriangle, label: 'Live Grenzinfos', color: '#FF8A3D', desc: 'Echtzeit Wartezeiten', tab: 'border' },
-  { icon: Fuel, label: 'Tankpreise', color: '#4DA8FF', desc: 'DE, AT & Route', tab: 'fuel' },
-  { icon: Bot, label: 'KI Assistent', color: '#F5B544', desc: 'Reise-Assistent', tab: 'ai' },
-  { icon: Map, label: 'Route & Maut', color: '#38E58A', desc: '4 Routen, Vignetten', tab: 'route' },
-  { icon: Users, label: 'Community', color: '#E854A8', desc: 'Live Meldungen', tab: 'community' },
-  { icon: CheckSquare, label: 'Checkliste', color: '#B6BCC8', desc: 'Reise Vorbereitung', tab: 'profile' },
-]
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
-const stats = [
-  { label: 'Aktive Fahrer', value: '12.4K', color: '#F5B544' },
-  { label: 'Grenz-Meldungen', value: '3.2K', color: '#38E58A' },
-  { label: 'Länder', value: '12+', color: '#4DA8FF' },
-]
+const glass = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  backdropFilter: 'blur(28px) saturate(140%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+  borderRadius: 22,
+}
 
-const CITIES = [
-  { label: 'München', pct: 0, flag: '🇩🇪' },
-  { label: 'Wien', pct: 0.2, flag: '🇦🇹' },
-  { label: 'Budapest', pct: 0.38, flag: '🇭🇺' },
-  { label: 'Belgrad', pct: 0.56, flag: '🇷🇸' },
-  { label: 'Sofia', pct: 0.74, flag: '🇧🇬' },
-  { label: 'İstanbul', pct: 1, flag: '🇹🇷' },
-]
-
-const TOTAL_KM = 2800
-
-function CarAnimation() {
-  const x = useMotionValue(0)
-  const [km, setKm] = useState(0)
-  const [activeCity, setActiveCity] = useState(0)
-
-  useEffect(() => {
-    const ctrl = animate(x, [0, 1], {
-      duration: 6,
-      repeat: Infinity,
-      repeatDelay: 1.2,
-      ease: [0.4, 0, 0.2, 1],
-      onUpdate(v) {
-        setKm(Math.round(v * TOTAL_KM))
-        const idx = CITIES.findLastIndex(c => v >= c.pct)
-        setActiveCity(idx >= 0 ? idx : 0)
-      },
-    })
-    return () => ctrl.stop()
-  }, [])
-
-  const roadWidth = 300
-  const carX = useTransform(x, [0, 1], [0, roadWidth - 28])
-
+function Tag({ children, color = 'var(--turkis)', style: s }) {
   return (
-    <div className="relative w-full select-none" style={{ height: 88 }}>
-      {/* City labels */}
-      <div className="absolute top-0 left-0 right-0 flex justify-between px-1" style={{ height: 32 }}>
-        {CITIES.map((c, i) => (
-          <div key={i} className="flex flex-col items-center gap-0.5" style={{ width: 36 }}>
-            <motion.div
-              animate={{ scale: activeCity === i ? 1.3 : 1, opacity: activeCity >= i ? 1 : 0.35 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              className="text-sm leading-none">
-              {c.flag}
-            </motion.div>
-            <span className="text-[8px] font-semibold leading-none"
-              style={{
-                color: activeCity === i ? '#F5B544' : 'rgba(255,255,255,0.3)',
-                whiteSpace: 'nowrap',
-                fontFamily: 'DM Sans, sans-serif',
-              }}>
-              {c.label}
-            </span>
-          </div>
-        ))}
-      </div>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '5px 9px', borderRadius: 999,
+      background: `${color}22`, color,
+      fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
+      textTransform: 'uppercase', border: `1px solid ${color}33`,
+      ...s,
+    }}>{children}</span>
+  )
+}
 
-      {/* Road */}
-      <div className="absolute left-0 right-0 rounded-2xl overflow-hidden"
-        style={{
-          top: 36, height: 28,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(8px)',
-        }}>
-        {/* Progress fill */}
-        <motion.div className="absolute left-0 top-0 bottom-0 rounded-l-2xl"
-          style={{
-            width: useTransform(x, [0, 1], ['0%', '100%']),
-            background: 'linear-gradient(90deg, rgba(245,181,68,0.25), rgba(245,181,68,0.06))',
-          }} />
-        {/* Dashes */}
-        <motion.div className="absolute top-1/2 flex gap-4"
-          style={{ transform: 'translateY(-50%)', width: 600 }}
-          animate={{ x: [0, -120] }}
-          transition={{ repeat: Infinity, duration: 1.4, ease: 'linear' }}>
-          {[...Array(18)].map((_, i) => (
-            <div key={i} className="rounded-full flex-shrink-0"
-              style={{ width: 20, height: 2, background: 'rgba(255,255,255,0.15)' }} />
-          ))}
-        </motion.div>
-        {/* City dots */}
-        {CITIES.map((c, i) => (
-          <motion.div key={i} className="absolute top-1/2 rounded-full"
-            style={{
-              left: `${c.pct * 100}%`,
-              transform: 'translate(-50%, -50%)',
-              width: 5, height: 5,
-              background: activeCity >= i ? '#F5B544' : 'rgba(255,255,255,0.2)',
-              boxShadow: activeCity >= i ? '0 0 6px rgba(245,181,68,0.7)' : 'none',
-            }}
-            animate={{ scale: activeCity === i ? [1, 1.6, 1] : 1 }}
-            transition={{ repeat: activeCity === i ? Infinity : 0, duration: 0.8 }} />
-        ))}
-      </div>
-
-      {/* Car */}
-      <motion.div
-        style={{ x: carX, position: 'absolute', top: 30, fontSize: 22 }}
-        animate={{ y: [0, -1, 0] }}
-        transition={{ repeat: Infinity, duration: 0.35, ease: 'easeInOut' }}>
-        🚗
-      </motion.div>
-
-      {/* KM */}
-      <div className="absolute right-0 bottom-0">
-        <span className="sy-pump text-[10px]" style={{ color: '#F5B544' }}>
-          {km.toLocaleString()} km
-        </span>
+function PumpMini({ fuel, price, c, loading }) {
+  return (
+    <div style={{
+      background: 'rgba(10,12,16,0.6)', border: `1px solid ${c}33`,
+      borderRadius: 16, padding: '10px 12px', textAlign: 'center',
+      boxShadow: `inset 0 0 0 1px ${c}10`,
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.8, color: c }}>{fuel}</div>
+      <div className="sy-pump" style={{ fontSize: 24, color: loading ? 'rgba(255,255,255,0.2)' : c, letterSpacing: -0.6, marginTop: 4, textShadow: loading ? 'none' : `0 0 12px ${c}55` }}>
+        {loading ? '···' : (price ?? '—')}<span style={{ fontSize: 12, opacity: 0.6 }}>{!loading && price ? ' €' : ''}</span>
       </div>
     </div>
   )
 }
 
-export default function HomePage() {
-  const { setActiveTab, user } = useStore()
+function CountryStrip({ routeKey }) {
+  const routes = {
+    austria_hungary: [
+      { c: 'DE', km: 380 }, { c: 'AT', km: 320 }, { c: 'HU', km: 530 },
+      { c: 'RS', km: 510 }, { c: 'BG', km: 320 }, { c: 'TR', km: 320 },
+    ],
+    adriatic: [
+      { c: 'DE', km: 420 }, { c: 'AT', km: 280 }, { c: 'HR', km: 600 },
+      { c: 'ME', km: 180 }, { c: 'AL', km: 280 }, { c: 'TR', km: 560 },
+    ],
+    south_axis: [
+      { c: 'DE', km: 380 }, { c: 'AT', km: 320 }, { c: 'SI', km: 120 },
+      { c: 'HR', km: 480 }, { c: 'RS', km: 380 }, { c: 'TR', km: 420 },
+    ],
+  }
+  const segs = routes[routeKey] || routes.austria_hungary
+  const total = segs.reduce((a, s) => a + s.km, 0)
+  const N = 'rgba(255,255,255,0.55)'
+  return (
+    <div>
+      <div style={{ display: 'flex', height: 36, borderRadius: 10, overflow: 'hidden', gap: 2 }}>
+        {segs.map((s, i) => {
+          const col = i < 2 ? 'var(--turkis)' : N
+          return (
+            <div key={s.c} style={{
+              flex: s.km, background: `${col}22`, position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: col, fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 10,
+              border: `1px solid ${col}44`,
+            }}>
+              <span style={{ position: 'relative' }}>{s.c}</span>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, color: 'var(--fg-3)', fontSize: 11, fontWeight: 600 }}>
+        <span>{segs.map(s => s.c).join(' → ')}</span>
+        <span className="sy-pump">{total.toLocaleString('de')} km</span>
+      </div>
+    </div>
+  )
+}
 
-  const glass = {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    backdropFilter: 'blur(28px) saturate(140%)',
-    WebkitBackdropFilter: 'blur(28px) saturate(140%)',
-    borderRadius: 22,
+// Notifications modal
+function NotifModal({ onClose }) {
+  const notifs = [
+    { icon: '⛽', title: 'Diesel günstiger', body: 'Preise in München um 2 Cent gesunken.', time: 'vor 5 Min', color: 'var(--gruen)' },
+    { icon: '🛂', title: 'Grenze HU→RS', body: 'Aktuelle Wartezeit: ~25 Min laut Community.', time: 'vor 1 Std', color: 'var(--orange)' },
+    { icon: '🗺️', title: 'Route aktualisiert', body: 'Neue Mautgebühren in Bulgarien ab Juli 2026.', time: 'vor 2 Std', color: 'var(--e5)' },
+  ]
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        margin: '60px 16px 0', width: 300, maxWidth: 'calc(100vw - 32px)',
+        background: '#0F1318', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 20, overflow: 'hidden',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: 14 }}>Benachrichtigungen</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+        {notifs.map((n, i) => (
+          <div key={i} style={{ padding: '12px 16px', borderBottom: i < notifs.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', display: 'flex', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 12, background: `${n.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{n.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{n.title}</div>
+              <div style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 4 }}>{n.body}</div>
+              <div style={{ color: 'var(--fg-3)', fontSize: 10, fontWeight: 600 }}>{n.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const ROUTE_LABELS = {
+  austria_hungary: 'Balkan-Klassiker',
+  adriatic: 'Adria Route',
+  south_axis: 'Süd-Achse',
+}
+
+// Cost estimates per route (diesel, ~8L/100km)
+const ROUTE_COSTS = {
+  austria_hungary: { km: 2380, fuel: 312, toll: 94, vignette: 58, other: 22 },
+  adriatic:        { km: 2320, fuel: 298, toll: 88, vignette: 52, other: 22 },
+  south_axis:      { km: 2100, fuel: 275, toll: 80, vignette: 48, other: 22 },
+}
+
+export default function HomePage() {
+  const { user, setActiveTab, routeSettings, lastPosition } = useStore()
+  const username = user?.displayName || 'Reisende'
+  const routeKey = routeSettings?.selectedRouteKey || 'austria_hungary'
+  const costs = ROUTE_COSTS[routeKey] || ROUTE_COSTS.austria_hungary
+  const total = costs.fuel + costs.toll + costs.vignette + costs.other
+
+  const [prices, setPrices] = useState({ diesel: null, e10: null, e5: null })
+  const [pricesLoading, setPricesLoading] = useState(true)
+  const [cheapStation, setCheapStation] = useState(null)
+  const [showNotif, setShowNotif] = useState(false)
+  const [locationCity, setLocationCity] = useState(lastPosition?.city || 'München')
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/fuel/summary`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.summary) return
+        const de = d.summary.find(s => s.code === 'de')
+        if (de) {
+          setPrices({
+            diesel: Number(de.diesel).toFixed(3),
+            e10: null,
+            e5: Number(de.benzin || de.diesel + 0.1).toFixed(3),
+          })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setPricesLoading(false))
+  }, [])
+
+  // Get GPS position + cheapest nearby station
+  useEffect(() => {
+    const loadStation = async (lat, lng) => {
+      try {
+        const res = await fetch(`${API_BASE}/api/fuel/nearby?lat=${lat}&lng=${lng}&country=de`)
+        const data = await res.json()
+        if (data.stations?.length) {
+          const s = data.stations.find(x => x.diesel) || data.stations[0]
+          setCheapStation({ name: s.name, addr: s.address, diesel: s.diesel, dist: s.dist, lat: s.lat, lng: s.lng })
+        }
+      } catch {}
+    }
+
+    // Sofort letzten Standort nutzen
+    if (lastPosition) {
+      setLocationCity(lastPosition.city || 'München')
+      loadStation(lastPosition.lat, lastPosition.lng)
+    }
+
+    // Dann GPS aktualisieren
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lng } = pos.coords
+      try {
+        const geo = await fetch(`${API_BASE}/api/fuel/geocode?lat=${lat}&lon=${lng}`)
+        const gd = await geo.json()
+        const city = gd.address?.city || gd.address?.town || gd.address?.village
+        if (city) setLocationCity(city)
+        loadStation(lat, lng)
+      } catch {}
+    }, () => {}, { timeout: 8000, enableHighAccuracy: false })
+  }, [])
+
+  const openNavToStation = () => {
+    if (!cheapStation) return
+    if (cheapStation.lat && cheapStation.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${cheapStation.lat},${cheapStation.lng}`, '_blank')
+    }
   }
 
-  const username = user?.displayName || 'Reisender'
-
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 24 }}>
+    <div style={{ minHeight: '100%', padding: '0 16px', paddingBottom: 110, position: 'relative' }}>
 
-      {/* Hero */}
-      <div className="relative overflow-hidden"
-        style={{
-          background: 'rgba(255,255,255,0.02)',
-          backdropFilter: 'blur(40px)',
-          minHeight: 320,
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
-        }}>
-        {/* Ambient glows */}
-        <div className="absolute top-0 left-0 pointer-events-none"
-          style={{ width: 360, height: 360, background: 'radial-gradient(circle, rgba(245,181,68,0.08) 0%, transparent 65%)', transform: 'translate(-30%,-30%)' }} />
-        <div className="absolute top-0 right-0 pointer-events-none"
-          style={{ width: 280, height: 280, background: 'radial-gradient(circle, rgba(77,168,255,0.07) 0%, transparent 65%)', transform: 'translate(30%,-30%)' }} />
+      {/* Aurora */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `
+          radial-gradient(40% 25% at 15% 8%, rgba(245,181,68,0.16), transparent 60%),
+          radial-gradient(35% 20% at 85% 15%, rgba(77,168,255,0.14), transparent 60%)
+        `,
+      }}/>
 
-        <div className="relative z-10 px-5 pt-10 pb-6">
-          {/* Greeting + Badge */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-xs font-medium mb-1" style={{ color: '#7A8090', fontFamily: 'DM Sans, sans-serif' }}>
-                Hoş geldin · {username}
-              </p>
-              <div className="font-black text-2xl leading-tight" style={{ fontFamily: 'Space Grotesk, sans-serif', color: '#F2F4F8' }}>
-                Sıla Yolu <span style={{ color: '#F5B544' }}>2026</span>
-              </div>
+      {/* Header */}
+      <div style={{ position: 'relative', paddingTop: 52, paddingBottom: 6, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ color: 'var(--fg-3)', fontSize: 12, fontWeight: 600, marginBottom: 2 }}>
+            Hoş geldin, {username} · 🇩🇪 → 🇹🇷
+          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, letterSpacing: -0.8, color: 'var(--fg)', lineHeight: 1.1 }}>
+            Sıla Yolu <span style={{ color: 'var(--turkis)' }}>2026</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowNotif(v => !v)}
+          style={{ position: 'relative', width: 40, height: 40, borderRadius: 14, background: showNotif ? 'rgba(245,181,68,0.1)' : 'rgba(255,255,255,0.05)', border: showNotif ? '1px solid rgba(245,181,68,0.35)' : '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginTop: 8 }}
+        >
+          <IconBell size={18} style={{ color: showNotif ? 'var(--turkis)' : 'var(--fg-2)' }}/>
+          <span style={{ position: 'absolute', top: 8, right: 9, width: 7, height: 7, borderRadius: '50%', background: 'var(--orange)', boxShadow: '0 0 8px var(--orange)' }}/>
+        </button>
+      </div>
+
+      {showNotif && <NotifModal onClose={() => setShowNotif(false)}/>}
+
+      {/* Hero cost card — klickbar → Route-Tab */}
+      <button
+        onClick={() => setActiveTab('route')}
+        style={{ position: 'relative', marginTop: 18, marginBottom: 14, borderRadius: 24, background: 'rgba(245,181,68,0.06)', border: '1px solid rgba(245,181,68,0.22)', backdropFilter: 'blur(28px) saturate(140%)', padding: '20px 18px', overflow: 'hidden', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+      >
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(50% 60% at 80% 0%, rgba(245,181,68,0.12), transparent 70%)', pointerEvents: 'none' }}/>
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+            <div style={{ color: 'var(--fg-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>Geschätzte Gesamtkosten</div>
+            <Tag color="var(--gruen)" style={{ fontSize: 10 }}>↓ 12 % vs. 2024</Tag>
+          </div>
+          <div style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 10 }}>
+            {routeSettings?.start || 'München'} → {routeSettings?.dest || 'Istanbul'} · {ROUTE_LABELS[routeKey]}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 16 }}>
+            <span className="sy-pump" style={{ fontSize: 64, color: 'var(--turkis)', letterSpacing: -3, lineHeight: 1, textShadow: '0 0 40px rgba(245,181,68,0.4)' }}>{total}</span>
+            <span style={{ fontSize: 24, color: 'var(--turkis)', opacity: 0.7, fontWeight: 700 }}>€</span>
+          </div>
+          <div style={{ display: 'flex', height: 8, borderRadius: 6, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
+            <div style={{ flex: costs.fuel,     background: 'var(--turkis)',              borderRadius: 6 }}/>
+            <div style={{ flex: costs.toll,     background: 'rgba(255,255,255,0.55)',     borderRadius: 3 }}/>
+            <div style={{ flex: costs.vignette, background: 'rgba(255,255,255,0.30)',     borderRadius: 3 }}/>
+            <div style={{ flex: costs.other,    background: 'rgba(255,255,255,0.15)',     borderRadius: 3 }}/>
+          </div>
+          <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--fg-3)', fontWeight: 600, flexWrap: 'wrap' }}>
+            <span><span style={{ color: 'var(--turkis)' }}>●</span> Sprit · {costs.fuel}€</span>
+            <span><span style={{ color: 'rgba(255,255,255,0.55)' }}>●</span> Maut · {costs.toll}€</span>
+            <span><span style={{ color: 'rgba(255,255,255,0.30)' }}>●</span> Vignette · {costs.vignette}€</span>
+            <span><span style={{ color: 'rgba(255,255,255,0.15)' }}>●</span> Sonst. · {costs.other}€</span>
+          </div>
+        </div>
+      </button>
+
+      {/* 2x2 stat grid — klickbar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        {[
+          { label: 'Distanz', value: costs.km.toLocaleString('de'), unit: 'km', color: 'var(--turkis)', tab: 'route' },
+          { label: 'Fahrzeit', value: '~' + Math.round(costs.km / 85), unit: 'h', color: 'var(--fg-2)', tab: null },
+          { label: 'Tankkosten', value: String(costs.fuel), unit: '€', color: 'var(--gruen)', tab: 'fuel' },
+          { label: 'Maut+Vignette', value: String(costs.toll + costs.vignette), unit: '€', color: 'var(--fg-2)', tab: 'route' },
+        ].map(s => (
+          <button
+            key={s.label}
+            onClick={() => s.tab && setActiveTab(s.tab)}
+            style={{ ...glass, padding: '14px 14px', textAlign: 'left', cursor: s.tab ? 'pointer' : 'default', fontFamily: 'var(--font-body)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 6 }}>{s.label}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span className="sy-pump" style={{ fontSize: 26, color: s.color, letterSpacing: -1 }}>{s.value}</span>
+              <span style={{ color: 'var(--fg-3)', fontSize: 12, fontWeight: 600 }}>{s.unit}</span>
             </div>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(56,229,138,0.10)', border: '1px solid rgba(56,229,138,0.2)' }}>
-              <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#38E58A' }} />
-              <span className="text-xs font-medium" style={{ color: '#38E58A', fontFamily: 'DM Sans, sans-serif' }}>12.4K Live</span>
-            </motion.div>
-          </div>
-
-          {/* Car animation */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
-            <CarAnimation />
-          </motion.div>
-
-          {/* CTA Buttons */}
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            {[
-              { icon: Map, label: 'Route berechnen', tab: 'route', primary: true },
-              { icon: Bot, label: 'KI-Assistent', tab: 'ai', primary: false },
-              { icon: AlertTriangle, label: 'Grenze Live', tab: 'border', primary: false },
-              { icon: Users, label: 'Community', tab: 'community', primary: false },
-            ].map((btn, i) => {
-              const Icon = btn.icon
-              return (
-                <motion.button key={i} whileTap={{ scale: 0.96 }}
-                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.05 }}
-                  onClick={() => setActiveTab(btn.tab)}
-                  className="flex items-center justify-center gap-2 py-3 text-sm font-semibold"
-                  style={btn.primary ? {
-                    background: 'linear-gradient(180deg, #FFCC5C, #D49628)',
-                    color: '#0A0C10',
-                    border: 'none',
-                    borderRadius: 16,
-                    fontFamily: 'DM Sans, sans-serif',
-                    boxShadow: '0 4px 20px rgba(245,181,68,0.30)',
-                  } : {
-                    background: 'rgba(255,255,255,0.04)',
-                    color: '#B6BCC8',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 16,
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}>
-                  <Icon size={15} /> {btn.label}
-                </motion.button>
-              )
-            })}
-          </div>
-        </div>
+          </button>
+        ))}
       </div>
 
-      {/* Stats */}
-      <div className="px-4 py-5">
-        <div className="grid grid-cols-3 gap-3">
-          {stats.map((s, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
-              className="rounded-[22px] p-3 text-center"
-              style={glass}>
-              <div className="sy-pump text-xl" style={{ color: s.color }}>{s.value}</div>
-              <div className="text-xs mt-0.5" style={{ color: '#7A8090', fontFamily: 'DM Sans, sans-serif' }}>{s.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Live Preise */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-sm" style={{ color: '#F5B544', fontFamily: 'Space Grotesk, sans-serif', letterSpacing: '0.05em' }}>LIVE PREISE</h2>
-          <span className="text-xs" style={{ color: '#4E5462', fontFamily: 'DM Sans, sans-serif' }}>Tankerkönig · DE</span>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Diesel', price: '1.549', color: '#38E58A', soft: 'rgba(56,229,138,0.10)', border: 'rgba(56,229,138,0.20)', trend: '−0.2ct' },
-            { label: 'E10', price: '1.699', color: '#FF8A3D', soft: 'rgba(255,138,61,0.10)', border: 'rgba(255,138,61,0.20)', trend: '+0.1ct' },
-            { label: 'E5', price: '1.749', color: '#4DA8FF', soft: 'rgba(77,168,255,0.10)', border: 'rgba(77,168,255,0.20)', trend: '−0.3ct' },
-          ].map((f, i) => (
-            <motion.div key={i}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05 }}
-              className="rounded-[22px] p-3 text-center"
-              style={{ background: f.soft, border: `1px solid ${f.border}`, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)' }}>
-              <div className="text-[10px] font-bold mb-1" style={{ color: f.color, fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.06em' }}>{f.label}</div>
-              <div className="sy-pump text-lg" style={{ color: f.color }}>{f.price}</div>
-              <div className="text-[9px] mt-1" style={{ color: f.color, opacity: 0.7 }}>{f.trend} heute</div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Features */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-sm" style={{ color: '#F5B544', fontFamily: 'Space Grotesk, sans-serif', letterSpacing: '0.05em' }}>ALLE FEATURES</h2>
-          <div className="flex items-center gap-1 text-xs" style={{ color: '#4E5462' }}>
-            <TrendingUp size={12} /> Neu
+      {/* Live prices — klickbar → Tanken */}
+      <button
+        onClick={() => setActiveTab('fuel')}
+        style={{ marginBottom: 14, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>
+            Aktuelle Preise · {locationCity}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: pricesLoading ? 'var(--fg-3)' : 'var(--gruen)', boxShadow: pricesLoading ? 'none' : '0 0 8px var(--gruen)', display: 'inline-block' }}/>
+            <span style={{ fontSize: 11, color: pricesLoading ? 'var(--fg-3)' : 'var(--gruen)', fontWeight: 700 }}>{pricesLoading ? 'LÄDT' : 'LIVE'}</span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {features.map((f, i) => {
-            const Icon = f.icon
-            return (
-              <motion.div key={i}
-                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 * i }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setActiveTab(f.tab)}
-                className="rounded-[22px] p-4 cursor-pointer"
-                style={glass}>
-                <div className="w-9 h-9 rounded-[14px] flex items-center justify-center mb-3"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <Icon size={18} style={{ color: f.color }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          <PumpMini fuel="DIESEL" price={prices.diesel} c="var(--gruen)" loading={pricesLoading}/>
+          <PumpMini fuel="E10" price={prices.e10} c="var(--orange)" loading={pricesLoading}/>
+          <PumpMini fuel="E5" price={prices.e5} c="var(--e5)" loading={pricesLoading}/>
+        </div>
+      </button>
+
+      {/* Cheapest station — live oder Fallback */}
+      <div style={{ ...glass, padding: '14px 16px', marginBottom: 14, border: '1px solid rgba(56,229,138,0.22)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, color: 'var(--gruen)', fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 }}>
+              {cheapStation ? 'Günstigste in der Nähe' : 'Tankstellen'}
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {cheapStation?.name || 'GPS aktivieren für Live-Daten'}
+            </div>
+            {cheapStation ? (
+              <>
+                <div style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {cheapStation.addr}{cheapStation.dist ? ` · ${Number(cheapStation.dist).toFixed(1)} km` : ''}
                 </div>
-                <div className="font-semibold text-sm" style={{ color: '#F2F4F8', fontFamily: 'DM Sans, sans-serif' }}>{f.label}</div>
-                <div className="text-xs mt-0.5" style={{ color: '#7A8090', fontFamily: 'DM Sans, sans-serif' }}>{f.desc}</div>
-              </motion.div>
-            )
-          })}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span className="sy-pump" style={{ fontSize: 22, color: 'var(--gruen)' }}>
+                    {Number(cheapStation.diesel).toFixed(3)}
+                  </span>
+                  <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>€ Diesel</span>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>Tankstellen im 5 km Radius anzeigen</div>
+            )}
+          </div>
+          <button
+            onClick={cheapStation ? openNavToStation : () => setActiveTab('fuel')}
+            style={{
+              padding: '10px 18px', borderRadius: 14, border: 'none',
+              background: 'var(--turkis)', color: '#1F1402',
+              fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontFamily: 'var(--font-body)', flexShrink: 0, marginLeft: 10,
+            }}
+          >
+            <IconArrow size={14}/> {cheapStation ? 'Nav' : 'Alle'}
+          </button>
         </div>
       </div>
 
-      {/* Premium Banner */}
-      <div className="px-4 pb-6">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          className="rounded-[22px] p-5 flex items-center justify-between"
-          style={{ background: 'rgba(245,181,68,0.06)', border: '1px solid rgba(245,181,68,0.15)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)' }}>
-          <div>
-            <div className="text-xs font-bold mb-1" style={{ color: '#F5B544', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.06em' }}>⭐ PREMIUM</div>
-            <div className="font-bold" style={{ color: '#F2F4F8', fontFamily: 'Space Grotesk, sans-serif' }}>Alles freischalten</div>
-            <div className="text-xs mt-0.5" style={{ color: '#7A8090', fontFamily: 'DM Sans, sans-serif' }}>KI Voice · Offline · PDF</div>
-          </div>
-          <motion.button whileTap={{ scale: 0.95 }}
-            className="px-4 py-2.5 rounded-[14px] text-sm font-bold flex items-center gap-1"
-            style={{
-              background: 'linear-gradient(180deg, #FFCC5C, #D49628)',
-              color: '#0A0C10',
-              border: 'none',
-              fontFamily: 'DM Sans, sans-serif',
-              boxShadow: '0 4px 16px rgba(245,181,68,0.30)',
-            }}>
-            Upgrade <ChevronRight size={14} />
-          </motion.button>
-        </motion.div>
+      {/* Active route / country strip — klickbar → Route-Tab */}
+      <button
+        onClick={() => setActiveTab('route')}
+        style={{ ...glass, padding: '16px 16px', marginBottom: 14, width: '100%', textAlign: 'left', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'var(--font-body)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>Aktive Route</div>
+          <Tag color="var(--turkis)">{ROUTE_LABELS[routeKey]}</Tag>
+        </div>
+        <CountryStrip routeKey={routeKey}/>
+      </button>
+
+      {/* Quick actions */}
+      <div style={{ marginBottom: 4 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, marginBottom: 12 }}>Schnellzugriff</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <button onClick={() => setActiveTab('route')} style={{
+            ...glass, padding: '16px 16px',
+            background: 'linear-gradient(135deg, rgba(245,181,68,0.18), rgba(245,181,68,0.06))',
+            border: '1px solid rgba(245,181,68,0.35)',
+            cursor: 'pointer', borderRadius: 18,
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+            fontFamily: 'var(--font-body)',
+          }}>
+            <IconRoute size={22} style={{ color: 'var(--turkis)' }}/>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--turkis)' }}>Route planen</div>
+          </button>
+          <button onClick={() => setActiveTab('fuel')} style={{
+            ...glass, padding: '16px 16px', border: '1px solid rgba(255,255,255,0.08)',
+            cursor: 'pointer', borderRadius: 18, background: 'rgba(255,255,255,0.04)',
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+            fontFamily: 'var(--font-body)',
+          }}>
+            <IconFuel size={22} style={{ color: 'var(--gruen)' }}/>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--fg)' }}>Tanken</div>
+          </button>
+          <button onClick={() => setActiveTab('ai')} style={{
+            ...glass, padding: '16px 16px', border: '1px solid rgba(255,255,255,0.08)',
+            cursor: 'pointer', borderRadius: 18, background: 'rgba(255,255,255,0.04)',
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+            fontFamily: 'var(--font-body)',
+          }}>
+            <IconChat size={22} style={{ color: 'var(--e5)' }}/>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--fg)' }}>KI-Assistent</div>
+          </button>
+          <button onClick={() => setActiveTab('profile')} style={{
+            ...glass, padding: '16px 16px', border: '1px solid rgba(255,255,255,0.08)',
+            cursor: 'pointer', borderRadius: 18, background: 'rgba(255,255,255,0.04)',
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+            fontFamily: 'var(--font-body)',
+          }}>
+            <IconCardSm size={22} style={{ color: 'var(--orange)' }}/>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--fg)' }}>Checkliste</div>
+          </button>
+        </div>
       </div>
     </div>
   )

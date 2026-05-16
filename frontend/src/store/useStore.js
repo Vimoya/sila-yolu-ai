@@ -6,10 +6,11 @@ export const useStore = create(
     (set) => ({
       user: null,
       isDark: true,
-      activeTab: 'home',
+      activeTab: 'dashboard',
       currentRoute: null,
       routeResult: null,
       checklist: {},
+      lastPosition: null, // { lat, lng, city, updatedAt }
 
       // Route settings — persisted so user doesn't re-enter every time
       routeSettings: {
@@ -21,8 +22,10 @@ export const useStore = create(
         avoidFerry: false,
         avoidToll: false,
         selectedRouteKey: 'austria_hungary',
+        persons: 4,
       },
 
+      setLastPosition: (pos) => set({ lastPosition: pos }),
       setUser: (user) => set({ user }),
       toggleDark: () => {},
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -38,6 +41,7 @@ export const useStore = create(
         routeSettings: s.routeSettings,
         currentRoute: s.currentRoute,
         routeResult: s.routeResult,
+        lastPosition: s.lastPosition,
       }),
     }
   )

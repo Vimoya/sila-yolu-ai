@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { User, LogOut, ChevronRight, Star, Bell, Shield, Fuel, Map, Car, Save, Check } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { auth } from '../firebase/config'
 import { signOut } from 'firebase/auth'
+import { IconCheck, IconBell, IconGlobe, IconStar, IconCamera, IconPlus, IconChevron, IconShield } from '../components/Icons'
 
 const glass = {
   background: 'rgba(255,255,255,0.04)',
@@ -13,469 +12,402 @@ const glass = {
   borderRadius: 22,
 }
 
-const CHECKLIST_CATEGORIES = [
+const inputStyle = {
+  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 12, color: '#F2F4F8', padding: '10px 12px', fontSize: 14,
+  width: '100%', outline: 'none', fontFamily: 'var(--font-body)', boxSizing: 'border-box',
+}
+
+function Tag({ children, color = 'var(--turkis)', style: s }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '5px 9px', borderRadius: 999,
+      background: `${color}22`, color,
+      fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
+      textTransform: 'uppercase', border: `1px solid ${color}33`, ...s,
+    }}>{children}</span>
+  )
+}
+
+function Avatar({ name, size = 80, color = 'var(--turkis)' }) {
+  const initials = (name || 'U').split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase()
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 22,
+      background: `linear-gradient(135deg, ${color}, rgba(245,181,68,0.3))`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#1F1402', fontWeight: 800, fontSize: size * 0.35,
+      fontFamily: 'var(--font-display)', boxShadow: `0 8px 24px ${color}44`, flexShrink: 0,
+    }}>{initials}</div>
+  )
+}
+
+const CHECKLIST_GROUPS = [
   {
-    id: 'docs', label: 'Pflichtdokumente', icon: '📋',
+    id: 'docs', label: 'Dokumente',
     items: [
-      'Reisepass (für alle Mitreisenden)',
-      'Personalausweis (nur EU-intern, TR akzeptiert)',
-      'Führerschein (EU-Schein reicht)',
-      'Fahrzeugschein (Zulassungsbescheinigung Teil I)',
-      'Grüne Karte (Internationaler KFZ-Versicherungsnachweis)',
-      'EU-Krankenversicherungskarte (EHIC/EHEC)',
-      'Bei Mietwagen: Mietvertrag + Vollmacht',
-      'Reiseversicherung / Notfallkarte',
+      { id: 'reisepass', label: 'Reisepass', def: true },
+      { id: 'fahrzeugschein', label: 'Fahrzeugschein', def: true },
+      { id: 'fuehrerschein', label: 'Führerschein', def: true },
+      { id: 'gruene_karte', label: 'Grüne Versicherungskarte', def: true },
+      { id: 'auslandskranken', label: 'Auslandskrankenversicherung', def: false },
+      { id: 'kinder_docs', label: 'Kinder-Dokumente', def: false },
+      { id: 'vollmacht', label: 'Fahrzeugvollmacht', def: false },
     ],
   },
   {
-    id: 'vignettes', label: 'Vignetten & Maut', icon: '🛂',
+    id: 'maut', label: 'Maut & Vignetten',
     items: [
-      'Österreich: Autobahnvignette 10 Tage (15,40€) — digital kaufen auf asfinag.at',
-      'Slowenien: DarsGo Vignette 7 Tage (15,50€) — darsgo.si',
-      'Ungarn: e-Matrica 10 Tage (6,50€) — online oder an Grenze',
-      'Kroatien: Maut bar/Karte (ca. 18€) — an den Mautstationen',
-      'Serbien: Autobahnmaut bar/Karte (ca. 12€) — kein Vorkauf nötig',
-      'Rumänien: Rovinieta 7 Tage (ca. 12€) — roviniete.ro oder Grenze',
-      'Bulgarien: e-Vignette 7 Tage — bgtoll.bg oder an Grenze',
-      'Türkei: HGS Transponder an Grenze kaufen (15–25€ Guthaben)',
-      'Türkei: OGS Transponder-Alternative — an KAPIKULE Grenzstelle',
-      'Griechenland: Maut Egnatia Odos & A1 (ca. 30€ gesamt)',
-      'Nordmazedonien: PKW kostenlos — keine Vignette nötig',
+      { id: 'vignette_at', label: 'Vignette Österreich (15,40€)', def: false },
+      { id: 'vignette_hu', label: 'e-Matrica Ungarn (6,50€)', def: false },
+      { id: 'maut_rs', label: 'Maut Serbien (~12€)', def: false },
+      { id: 'maut_bg', label: 'e-Vignette Bulgarien (10,50€)', def: false },
+      { id: 'hgs_tr', label: 'HGS/OGS Transponder Türkei', def: false },
     ],
   },
   {
-    id: 'car', label: 'Auto & Sicherheit', icon: '🚗',
+    id: 'auto', label: 'Auto · Sicherheit',
     items: [
-      'Reifendruck prüfen (inkl. Reserverad)',
-      'Reifenprofil mind. 3mm für lange Strecke',
-      'Motoröl-Stand prüfen',
-      'Kühlwasser prüfen',
-      'Bremsflüssigkeit prüfen',
-      'Scheibenwischerwasser (Sommermischung)',
-      'Verbandskasten (Pflicht in TR, AT, HR)',
-      'Warndreieck (mind. 1x, 2x empfohlen)',
-      'Feuerlöscher (Pflicht in TR — 1kg min.)',
-      'Warnweste (Pflicht in TR, HR, RS, BG)',
-      'Ersatzglühbirnen-Set (Pflicht in einigen Ländern)',
-      'Abschleppseil oder -stange',
-      'Starthilfekabel',
-      'Reifenreparaturset / Notrad',
+      { id: 'warnweste', label: 'Warnweste', def: true },
+      { id: 'warndreieck', label: 'Warndreieck', def: true },
+      { id: 'erste_hilfe', label: 'Erste-Hilfe-Set', def: false },
+      { id: 'ersatzreifen', label: 'Ersatzreifen / Pannenset', def: false },
+      { id: 'feuerlöscher', label: 'Feuerlöscher (Pflicht in TR)', def: false },
     ],
   },
   {
-    id: 'money', label: 'Geld & Währungen', icon: '💳',
+    id: 'reise', label: 'Reisegepäck',
     items: [
-      'Kreditkarte Visa oder Mastercard (überall akzeptiert)',
-      'Bargeld Euro (für AT, SI, HR, GR)',
-      'Bargeld Serbischer Dinar (ca. 1500 RSD / 13€)',
-      'Bargeld Bulgarischer Lew (ca. 25 BGN / 13€)',
-      'Türkische Lira (in TR tauschen — besserer Kurs vor Ort)',
-      'Ungarischer Forint optional (Kartenzahlung meist möglich)',
-      'Reisekrankenversicherung mit Auslandsschutz',
-      'Kfz-Auslandsschadenschutz (Schutzbrief ADAC/ÖAMTC)',
-      'Notfallreserve in bar: mind. 200€',
-    ],
-  },
-  {
-    id: 'family', label: 'Familie & Kinder', icon: '👨‍👩‍👧',
-    items: [
-      'Kinderreisepass oder Personalausweis',
-      'Kindersitz korrekt montiert & gesichert',
-      'Sonnenschutz für Fenster',
-      'Erste-Hilfe-Set für Kinder',
-      'Fieberthermometer & Grundmedikamente',
-      'Snacks & genug Getränke für Langstrecke',
-      'Tablet / Spielzeug geladen',
-      'Nackenkissen & Decke für Schlaf im Auto',
-      'Krankenversicherungskarte auch für Kinder',
-      'Schriftliche Einverständniserklärung (wenn Kind nur mit einem Elternteil)',
-    ],
-  },
-  {
-    id: 'health', label: 'Gesundheit & Apotheke', icon: '💊',
-    items: [
-      'Reisekrankenversicherung aktiv',
-      'Persönliche Medikamente für gesamte Reisedauer',
-      'Schmerzmittel (Ibuprofen / Paracetamol)',
-      'Reiseübelkeitstabletten',
-      'Durchfallmittel (Immodium o.ä.)',
-      'Sonnencreme LSF 50+',
-      'Mückenspray (Türkei, Balkan im Sommer)',
-      'Pflaster & Wunddesinfektion',
-      'Augentropfen für lange Fahrt',
-      'Notfallkarte mit Blutgruppe & Allergien',
-    ],
-  },
-  {
-    id: 'tech', label: 'Technik & Navigation', icon: '📱',
-    items: [
-      'Handy vollgeladen',
-      'Powerbank (20.000mAh empfohlen)',
-      'Kfz-Ladekabel USB-C & Lightning',
-      'Handyhalterung für Windschutzscheibe',
-      'Offline-Karten geladen: Google Maps / HERE WeGo',
-      'Reiseadapter für TR (Typ F passt überall)',
-      'Dashcam (empfohlen für Schadensnachweis)',
-      'Internationale Roaming-Daten aktivieren oder TR-SIM kaufen',
-    ],
-  },
-  {
-    id: 'border', label: 'Grenze & Einreise', icon: '🛃',
-    items: [
-      'Türkei Einreise: EU-Pass ohne Visum (90 Tage)',
-      'Serbien: Kein Visum für EU-Bürger',
-      'Bulgarien: EU-Innengrenze (kein Stopp)',
-      'Ungarn: EU-Innengrenze (kein Stopp)',
-      'Kroatien: EU-Innengrenze (kein Stopp)',
-      'Fahrzeugversicherung gültig in allen Transitländern prüfen',
-      'Haustiere: EU-Heimtierausweis + Tollwutimpfung (TR verlangt dies)',
-      'Grüne Karte für alle Länder auf der Route gültig',
-      'Notfallnummer TR gespeichert: 112 (allgemein), 156 (Gendarmerie)',
+      { id: 'ladekabel', label: 'Ladekabel / USB-Adapter', def: false },
+      { id: 'powerbank', label: 'Powerbank', def: true },
+      { id: 'bargeld', label: 'Bargeld Euro + TL', def: false },
+      { id: 'hotel_beo', label: 'Unterkunft gebucht', def: false },
+      { id: 'wasser', label: 'Wasser & Snacks', def: false },
     ],
   },
 ]
 
-const TABS = [
-  { id: 'checklist', label: '✅ Checkliste' },
-  { id: 'vehicle', label: '🚗 Fahrzeug' },
-  { id: 'settings', label: '⚙️ Einstellungen' },
-]
+function ChecklistRow({ id, label, checked, onToggle }) {
+  return (
+    <button onClick={() => onToggle(id)} style={{
+      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer',
+      borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'left',
+    }}>
+      <div style={{
+        width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+        background: checked ? 'var(--turkis)' : 'rgba(255,255,255,0.06)',
+        border: checked ? 'none' : '1px solid rgba(255,255,255,0.12)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+      }}>
+        {checked && <IconCheck size={13} style={{ color: '#1F1402' }}/>}
+      </div>
+      <span style={{
+        flex: 1, fontSize: 14, color: checked ? 'var(--fg-3)' : 'var(--fg)',
+        textDecoration: checked ? 'line-through' : 'none', fontFamily: 'var(--font-body)',
+      }}>{label}</span>
+    </button>
+  )
+}
+
+function ProgressRing({ pct }) {
+  const r = 44, circ = 2 * Math.PI * r, off = circ * (1 - pct / 100)
+  return (
+    <svg width={100} height={100}>
+      <circle cx={50} cy={50} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={8}/>
+      <circle cx={50} cy={50} r={r} fill="none" stroke="var(--gruen)" strokeWidth={8}
+        strokeDasharray={circ} strokeDashoffset={off} strokeLinecap="round"
+        transform="rotate(-90 50 50)" style={{ transition: 'stroke-dashoffset 0.5s ease' }}/>
+      <text x={50} y={55} textAnchor="middle" fill="var(--gruen)" fontSize="15" fontWeight="800" fontFamily="Space Grotesk">{pct}%</text>
+    </svg>
+  )
+}
+
+const ROUTE_LABELS = {
+  austria_hungary: { name: 'Balkan-Klassiker', icon: '🗺️', route: 'DE → AT → HU → RS → BG → TR' },
+  croatia_route:   { name: 'Kroatien Route',   icon: '🏖️', route: 'DE → AT → SI → HR → RS → BG → TR' },
+  romania_route:   { name: 'Rumänien Route',   icon: '🌄', route: 'DE → AT → HU → RO → BG → TR' },
+  greece_route:    { name: 'Griechenland',     icon: '☀️', route: 'DE → AT → SI → RS → MK → GR → TR' },
+}
+
+const FUEL_LABELS = { diesel: 'Diesel', e10: 'Benzin (E10)', e5: 'Super (E5)' }
 
 export default function ProfilePage() {
-  const { user, setUser, checklist, toggleCheckItem, routeSettings, setRouteSettings } = useStore()
-  const [activeSection, setActiveSection] = useState('checklist')
-  const [saved, setSaved] = useState(false)
+  const { user, setUser, checklist, toggleCheckItem, routeSettings, setRouteSettings, routeResult } = useStore()
+  const [activeTab, setActiveTab] = useState('profil')
+  const [editing, setEditing] = useState(false)
+  const [notifOn, setNotifOn] = useState(true)
+  const [customItems, setCustomItems] = useState([])
+  const [newItem, setNewItem] = useState('')
+  const [addingItem, setAddingItem] = useState(false)
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
 
-  const textMain = '#F2F4F8'
-  const textMuted = '#7A8090'
-  const border = 'rgba(255,255,255,0.07)'
-  const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 14,
-    color: textMain,
-    padding: '11px 14px',
-    fontSize: 14,
-    width: '100%',
-    outline: 'none',
-    fontFamily: 'DM Sans, sans-serif',
+  // Profile edit fields — sourced from routeSettings
+  const [editCar, setEditCar] = useState(routeSettings.car || '')
+  const [editConsumption, setEditConsumption] = useState(routeSettings.consumption || 8)
+  const [editFuel, setEditFuel] = useState(routeSettings.fuel || 'diesel')
+
+  const allItems = CHECKLIST_GROUPS.flatMap(g => g.items).concat(customItems)
+  const initChecked = (id) => checklist[id] !== undefined ? checklist[id] : allItems.find(i => i.id === id)?.def || false
+  const checkedCount = allItems.filter(i => initChecked(i.id)).length
+  const total = allItems.length
+  const pct = Math.round((checkedCount / total) * 100)
+
+  const selectedRoute = ROUTE_LABELS[routeSettings.selectedRouteKey] || ROUTE_LABELS.austria_hungary
+
+  function saveEdit() {
+    setRouteSettings({ car: editCar, consumption: editConsumption, fuel: editFuel })
+    setEditing(false)
   }
 
-  const totalItems = CHECKLIST_CATEGORIES.flatMap(c => c.items).length
-  const checkedItems = CHECKLIST_CATEGORIES.flatMap(c => c.items.map((_, i) => `${c.id}_${i}`)).filter(id => checklist[id]).length
-  const progress = Math.round((checkedItems / totalItems) * 100)
+  function addCustomItem() {
+    if (!newItem.trim()) return
+    const id = `custom_${Date.now()}`
+    setCustomItems(prev => [...prev, { id, label: newItem.trim(), def: false }])
+    toggleCheckItem(id)
+    setNewItem('')
+    setAddingItem(false)
+  }
 
-  async function handleLogout() {
-    await signOut(auth)
+  async function handleSignOut() {
+    try { await signOut(auth) } catch {}
     setUser(null)
   }
 
-  function handleSaveVehicle() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 24 }}>
-      <div className="relative z-10 px-4 pt-6 pb-24">
+    <div style={{ minHeight: '100%', padding: '0 16px', paddingBottom: 110, position: 'relative' }}>
 
-        {/* Profile Header */}
-        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
-          className="p-5 mb-4 text-center relative overflow-hidden" style={glass}>
-          <div className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(245,181,68,0.30), transparent)' }} />
+      {/* Aurora */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `
+          radial-gradient(40% 25% at 20% 5%, rgba(245,181,68,0.12), transparent 60%),
+          radial-gradient(35% 20% at 80% 25%, rgba(56,229,138,0.10), transparent 60%)
+        `,
+      }}/>
 
-          {/* Avatar */}
-          <div className="relative w-20 h-20 mx-auto mb-3">
-            <div className="w-20 h-20 rounded-[24px] flex items-center justify-center overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #F5B544, #D49628)', boxShadow: '0 0 32px rgba(245,181,68,0.30)' }}>
-              {user?.photoURL
-                ? <img src={user.photoURL} className="w-full h-full object-cover" alt="avatar" />
-                : <span className="text-2xl font-black" style={{ color: '#0A0C10', fontFamily: 'Space Grotesk, sans-serif' }}>
-                    {(user?.displayName || 'GS').slice(0, 2).toUpperCase()}
-                  </span>}
-            </div>
-          </div>
-
-          <div className="font-black text-lg mb-0.5" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>
-            {user?.displayName || 'Gast'}
-          </div>
-          <div className="text-sm mb-3" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>
-            {user?.email || 'Gast-Modus'}
-          </div>
-
-          <div className="flex items-center justify-center gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-              style={{ background: 'rgba(245,181,68,0.14)', border: '1px solid rgba(245,181,68,0.25)' }}>
-              <Star size={11} style={{ color: '#F5B544' }} />
-              <span className="text-xs font-semibold" style={{ color: '#F5B544', fontFamily: 'DM Sans, sans-serif' }}>PRO REISE</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-              style={{ background: 'rgba(255,138,61,0.14)', border: '1px solid rgba(255,138,61,0.25)' }}>
-              <span className="text-xs font-semibold" style={{ color: '#FF8A3D', fontFamily: 'DM Sans, sans-serif' }}>3 Trips</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Tabs */}
-        <div className="flex gap-1.5 mb-5 p-1 rounded-[20px]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          {TABS.map(tab => (
-            <motion.button key={tab.id} whileTap={{ scale: 0.97 }} onClick={() => setActiveSection(tab.id)}
-              className="flex-1 py-2 rounded-[14px] text-xs font-semibold"
-              style={activeSection === tab.id ? {
-                background: 'rgba(245,181,68,0.14)',
-                color: '#F5B544',
-                border: '1px solid rgba(245,181,68,0.25)',
-                fontFamily: 'DM Sans, sans-serif',
-              } : {
-                background: 'transparent',
-                color: textMuted,
-                border: '1px solid transparent',
-                fontFamily: 'DM Sans, sans-serif',
-              }}>
-              {tab.label}
-            </motion.button>
-          ))}
+      {/* Header */}
+      <div style={{ position: 'relative', paddingTop: 52, paddingBottom: 18 }}>
+        <div style={{ color: 'var(--fg-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Konto · Hesap</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: -0.6 }}>
+          Profil & <span style={{ color: 'var(--turkis)' }}>Checkliste</span>
         </div>
+      </div>
 
-        <AnimatePresence mode="wait">
+      {/* Tab toggle */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, padding: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16 }}>
+        {[['profil', 'Profil'], ['checklist', 'Checkliste']].map(([id, label]) => (
+          <button key={id} onClick={() => setActiveTab(id)} style={{
+            flex: 1, padding: '10px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+            fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 14,
+            background: activeTab === id ? 'rgba(245,181,68,0.15)' : 'transparent',
+            color: activeTab === id ? 'var(--turkis)' : 'var(--fg-3)',
+            outline: activeTab === id ? '1px solid rgba(245,181,68,0.35)' : 'none',
+          }}>{label}</button>
+        ))}
+      </div>
 
-          {/* ── CHECKLISTE ── */}
-          {activeSection === 'checklist' && (
-            <motion.div key="checklist" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              {/* Progress */}
-              <div className="rounded-2xl p-4 mb-4" style={glass}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-sm" style={{ color: textMain }}>Reise-Checkliste</span>
-                  <span className="sy-pump text-sm" style={{ color: progress === 100 ? '#38E58A' : '#F5B544' }}>
-                    {progress}%
-                  </span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  <motion.div className="h-full rounded-full"
-                    style={{ background: progress === 100 ? 'linear-gradient(90deg, #38E58A, #22c55e)' : 'linear-gradient(90deg, #F5B544, rgba(245,181,68,0.3))' }}
-                    animate={{ width: `${progress}%` }} transition={{ duration: 0.6 }} />
-                </div>
-                <div className="text-xs" style={{ color: textMuted }}>{checkedItems} von {totalItems} erledigt</div>
+      {activeTab === 'profil' && (
+        <div>
+          {/* Avatar + info */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, marginBottom: 20 }}>
+            <Avatar name={user?.displayName || 'U'}/>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.displayName || 'Reisende'}
               </div>
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email || 'Gast'}</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Tag color="var(--turkis)">Sıla Yolu</Tag>
+                {routeResult && <Tag color="var(--gruen)">Route berechnet</Tag>}
+              </div>
+            </div>
+          </div>
 
-              {CHECKLIST_CATEGORIES.map((cat, ci) => (
-                <motion.div key={cat.id}
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.04 }}
-                  className="mb-3">
-                  <div className="text-xs font-bold mb-2 flex items-center gap-2 tracking-widest px-1"
-                    style={{ color: textMuted }}>
-                    <span>{cat.icon}</span> {cat.label.toUpperCase()}
-                  </div>
-                  <div className="rounded-2xl overflow-hidden" style={glass}>
-                    {cat.items.map((item, i) => {
-                      const id = `${cat.id}_${i}`
-                      const checked = !!checklist[id]
-                      return (
-                        <motion.button key={id} whileTap={{ scale: 0.99 }}
-                          onClick={() => toggleCheckItem(id)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                          style={{ borderBottom: i < cat.items.length - 1 ? `1px solid ${border}` : 'none' }}>
-                          <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
-                            style={checked ? {
-                              background: 'rgba(56,229,138,0.14)',
-                              border: '1px solid rgba(56,229,138,0.30)',
-                            } : {
-                              background: 'rgba(255,255,255,0.04)',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                            }}>
-                            {checked && <Check size={11} style={{ color: '#38E58A' }} strokeWidth={3} />}
-                          </div>
-                          <span className="text-sm leading-snug flex-1"
-                            style={{ color: checked ? textMuted : textMain, textDecoration: checked ? 'line-through' : 'none' }}>
-                            {item}
-                          </span>
-                        </motion.button>
-                      )
-                    })}
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
+          {/* Travel info card */}
+          <div style={{ ...glass, marginBottom: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>Fahrzeug & Route</span>
+              <button onClick={() => editing ? saveEdit() : setEditing(true)} style={{
+                fontSize: 12, color: editing ? 'var(--gruen)' : 'var(--turkis)',
+                background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'var(--font-body)',
+              }}>{editing ? '✓ Speichern' : 'Bearbeiten'}</button>
+            </div>
 
-          {/* ── FAHRZEUG ── */}
-          {activeSection === 'vehicle' && (
-            <motion.div key="vehicle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <div className="rounded-2xl p-4 mb-3" style={glass}>
-                <div className="text-xs font-bold mb-4 tracking-widest" style={{ color: textMuted }}>FAHRZEUG-EINSTELLUNGEN</div>
-
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: textMuted }}>KRAFTSTOFFART</label>
-                    <div className="flex gap-2">
-                      {['diesel', 'benzin'].map(f => (
-                        <button key={f} onClick={() => setRouteSettings({ fuel: f })}
-                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize"
-                          style={routeSettings.fuel === f ? {
-                            background: 'rgba(245,181,68,0.14)',
-                            border: '1px solid rgba(245,181,68,0.25)',
-                            color: '#F5B544',
-                            borderRadius: 14,
-                            fontFamily: 'DM Sans, sans-serif',
-                          } : {
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            color: textMuted,
-                            borderRadius: 14,
-                            fontFamily: 'DM Sans, sans-serif',
-                          }}>
-                          {f === 'diesel' ? '⛽ Diesel' : '⛽ Benzin'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold mb-1.5 flex justify-between" style={{ color: textMuted }}>
-                      <span>VERBRAUCH (L/100KM)</span>
-                      <span style={{ color: textMain }}>{routeSettings.consumption} L</span>
-                    </label>
-                    <input type="range" min={4} max={20} step={0.5} value={routeSettings.consumption}
-                      onChange={e => setRouteSettings({ consumption: +e.target.value })}
-                      className="w-full" style={{ accentColor: '#F5B544' }} />
-                    <div className="flex justify-between text-xs mt-1" style={{ color: textMuted }}>
-                      <span>4 L</span><span>20 L</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold mb-1.5 flex justify-between" style={{ color: textMuted }}>
-                      <span>TANKGRÖSSE (LITER)</span>
-                    </label>
-                    <input type="number" min={30} max={120} step={5}
-                      defaultValue={60}
-                      style={inputStyle}
-                      placeholder="z.B. 60 Liter" />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: textMuted }}>FAHRZEUG (OPTIONAL)</label>
-                    <input type="text" placeholder="z.B. VW Golf TDI 2019" style={inputStyle} />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold mb-1.5 flex justify-between" style={{ color: textMuted }}>
-                      <span>AKTUELLER KRAFTSTOFFPREIS</span>
-                      <span style={{ color: textMain }}>{routeSettings.fuelPrice?.toFixed(2)} €/L</span>
-                    </label>
-                    <input type="range" min={1.0} max={2.5} step={0.05} value={routeSettings.fuelPrice}
-                      onChange={e => setRouteSettings({ fuelPrice: +e.target.value })}
-                      className="w-full" style={{ accentColor: '#F5B544' }} />
-                    <div className="flex justify-between text-xs mt-1" style={{ color: textMuted }}>
-                      <span>1,00 €</span><span>2,50 €</span>
-                    </div>
-                  </div>
+            {editing ? (
+              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Fahrzeug</div>
+                  <input value={editCar} onChange={e => setEditCar(e.target.value)} placeholder="z.B. VW Passat TDI" style={inputStyle}/>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Verbrauch (L/100km)</div>
+                  <input type="number" value={editConsumption} onChange={e => setEditConsumption(+e.target.value)} min={3} max={25} step={0.5} style={inputStyle}/>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Kraftstoff</div>
+                  <select value={editFuel} onChange={e => setEditFuel(e.target.value)} style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }}>
+                    <option value="diesel" style={{ background: '#141420' }}>Diesel</option>
+                    <option value="e10" style={{ background: '#141420' }}>Benzin (E10)</option>
+                    <option value="e5" style={{ background: '#141420' }}>Super (E5)</option>
+                  </select>
                 </div>
               </div>
-
-              <motion.button whileTap={{ scale: 0.97 }} onClick={handleSaveVehicle}
-                className="w-full py-3.5 rounded-[18px] font-bold text-sm flex items-center justify-center gap-2"
-                style={{
-                  background: saved ? 'rgba(56,229,138,0.12)' : 'linear-gradient(180deg, #FFCC5C, #D49628)',
-                  border: saved ? '1px solid rgba(56,229,138,0.25)' : 'none',
-                  color: saved ? '#38E58A' : '#0A0C10',
-                  boxShadow: saved ? 'none' : '0 4px 16px rgba(245,181,68,0.30)',
-                  fontFamily: 'DM Sans, sans-serif',
-                }}>
-                {saved ? <><Check size={15} /> Gespeichert</> : <><Save size={15} /> Speichern</>}
-              </motion.button>
-
-              {/* Car tips */}
-              <div className="mt-4 rounded-2xl p-4" style={glass}>
-                <div className="text-xs font-bold mb-3 tracking-widest" style={{ color: textMuted }}>TIPPS FÜR LANGE FAHRT</div>
+            ) : (
+              <>
                 {[
-                  { icon: '🔧', text: 'Kundendienst vor der Reise empfohlen bei über 10.000 km seit letzter Wartung' },
-                  { icon: '🛞', text: 'Reifendruck bei kalten Reifen prüfen — Richtwert auf dem Fahrzeugtürpfosten' },
-                  { icon: '⛽', text: 'Nie unter ¼ Tank fahren — Tankstellen in RS/BG können Lücken haben' },
-                  { icon: '🌡️', text: 'Kühlwasser bei Sommerfahrten öfter kontrollieren' },
-                ].map((tip, i) => (
-                  <div key={i} className="flex gap-2.5 mb-2.5 last:mb-0">
-                    <span className="text-base flex-shrink-0">{tip.icon}</span>
-                    <span className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.55)' }}>{tip.text}</span>
+                  ['Fahrzeug', routeSettings.car || 'Nicht angegeben'],
+                  ['Verbrauch', `${routeSettings.consumption} L / 100 km`],
+                  ['Kraftstoff', FUEL_LABELS[routeSettings.fuel] || 'Diesel'],
+                  ['Personen', `${routeSettings.persons || 4} Personen`],
+                  ['Aktive Route', `${selectedRoute.icon} ${selectedRoute.name}`],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>{k}</span>
+                    <span style={{ color: 'var(--fg)', fontSize: 14, fontWeight: 600 }}>{v}</span>
                   </div>
                 ))}
-              </div>
-            </motion.div>
-          )}
+              </>
+            )}
+          </div>
 
-          {/* ── EINSTELLUNGEN ── */}
-          {activeSection === 'settings' && (
-            <motion.div key="settings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="flex flex-col gap-3">
-
-              {[
-                { icon: Map, label: 'Bevorzugte Route', sub: routeSettings.selectedRouteKey?.replace('_', ' ') || 'Österreich–Ungarn', color: '#4ade80' },
-                { icon: Bell, label: 'Benachrichtigungen', sub: 'Grenzwarnungen, Community-Meldungen', color: '#60a5fa' },
-                { icon: Shield, label: 'Datenschutz & AGB', sub: 'Daten & Berechtigungen verwalten', color: '#a78bfa' },
-              ].map((item, i) => {
-                const Icon = item.icon
+          {/* Active route card */}
+          {routeResult?.routes && (
+            <div style={{ ...glass, padding: '14px 16px', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Letzte berechnete Routen</div>
+              {routeResult.routes.slice(0, 3).map((r, i) => {
+                const info = ROUTE_LABELS[r.key] || {}
                 return (
-                  <motion.button key={i}
-                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="rounded-2xl p-4 flex items-center justify-between w-full text-left" style={glass}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <Icon size={17} style={{ color: item.color }} />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-sm" style={{ color: textMain }}>{item.label}</div>
-                        <div className="text-xs mt-0.5 capitalize" style={{ color: textMuted }}>{item.sub}</div>
-                      </div>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                    <span style={{ fontSize: 20 }}>{info.icon || '🗺️'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{r.name || info.name}</div>
+                      <div style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 1 }}>{r.km?.toLocaleString()} km · ~{r.hours}h</div>
                     </div>
-                    <ChevronRight size={15} style={{ color: textMuted }} />
-                  </motion.button>
+                    <span className="sy-pump" style={{ color: 'var(--turkis)', fontSize: 16, flexShrink: 0 }}>{r.total} €</span>
+                  </div>
                 )
               })}
-
-              {/* Premium */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-                className="p-5 relative overflow-hidden" style={{ ...glass, background: 'rgba(245,181,68,0.06)', borderColor: 'rgba(245,181,68,0.18)' }}>
-                <div className="absolute top-0 left-0 right-0 h-px"
-                  style={{ background: 'linear-gradient(90deg, transparent, rgba(245,181,68,0.40), transparent)' }} />
-                <div className="text-xs font-bold mb-1 tracking-widest" style={{ color: '#F5B544', fontFamily: 'DM Sans, sans-serif' }}>⭐ PREMIUM</div>
-                <div className="font-black text-base mb-0.5" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>Alles freischalten</div>
-                <div className="text-xs mb-4" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>KI Voice · Offline-Karten · PDF Export · Push-Warnungen</div>
-                <motion.button whileTap={{ scale: 0.96 }}
-                  className="px-5 py-2.5 rounded-[14px] text-sm font-bold"
-                  style={{
-                    background: 'linear-gradient(180deg, #FFCC5C, #D49628)',
-                    border: 'none',
-                    color: '#0A0C10',
-                    boxShadow: '0 4px 16px rgba(245,181,68,0.30)',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}>
-                  Jetzt upgraden →
-                </motion.button>
-              </motion.div>
-
-              {/* Logout */}
-              {user && (
-                <motion.button onClick={handleLogout} whileTap={{ scale: 0.97 }}
-                  className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-sm"
-                  style={{
-                    background: 'rgba(255,107,107,0.06)',
-                    border: '1px solid rgba(255,107,107,0.15)',
-                    color: '#FF6B6B',
-                    fontFamily: 'DM Sans, sans-serif',
-                    borderRadius: 18,
-                  }}>
-                  <LogOut size={15} /> Abmelden
-                </motion.button>
-              )}
-            </motion.div>
+            </div>
           )}
 
-        </AnimatePresence>
-      </div>
+          {/* Settings */}
+          <div style={{ ...glass, overflow: 'hidden', marginBottom: 14 }}>
+            {/* Notifications */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <IconBell size={16} style={{ color: 'var(--gruen)', width: 20 }}/>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>Benachrichtigungen</span>
+              <button onClick={() => setNotifOn(v => !v)} style={{
+                width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: notifOn ? 'var(--gruen)' : 'rgba(255,255,255,0.12)',
+                position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+              }}>
+                <div style={{
+                  position: 'absolute', top: 3, left: notifOn ? 22 : 3, width: 18, height: 18,
+                  borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+                }}/>
+              </button>
+            </div>
+            {/* Language */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <IconGlobe size={16} style={{ color: 'var(--e5)', width: 20 }}/>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>Sprache</span>
+              <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>Deutsch / TR</span>
+              <IconChevron size={14} style={{ color: 'var(--fg-4)' }}/>
+            </div>
+            {/* Privacy */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <IconShield size={16} style={{ color: 'var(--fg-3)', width: 20 }}/>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>Datenschutz</span>
+              <IconChevron size={14} style={{ color: 'var(--fg-4)' }}/>
+            </div>
+            {/* Sign out */}
+            {!showSignOutConfirm ? (
+              <button onClick={() => setShowSignOutConfirm(true)} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+              }}>
+                <span style={{ width: 20 }}/>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--orange)', fontFamily: 'var(--font-body)' }}>Abmelden</span>
+              </button>
+            ) : (
+              <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--fg-3)' }}>Wirklich abmelden?</span>
+                <button onClick={handleSignOut} style={{ padding: '7px 14px', borderRadius: 10, background: 'var(--orange)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Ja</button>
+                <button onClick={() => setShowSignOutConfirm(false)} style={{ padding: '7px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--fg)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Nein</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'checklist' && (
+        <div>
+          {/* Progress */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 20 }}>
+            <ProgressRing pct={pct}/>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22 }}>
+                {checkedCount} / {total} <span style={{ color: 'var(--fg-3)', fontSize: 16, fontWeight: 600 }}>erledigt</span>
+              </div>
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, marginTop: 4 }}>
+                {total - checkedCount === 0 ? '✓ Alles bereit für die Fahrt!' : `Noch ${total - checkedCount} Punkte offen`}
+              </div>
+              {pct === 100 && <Tag color="var(--gruen)" style={{ marginTop: 8 }}>Reisebereit!</Tag>}
+            </div>
+          </div>
+
+          {/* Groups */}
+          {CHECKLIST_GROUPS.map(group => (
+            <div key={group.id} style={{ ...glass, padding: '14px 16px', marginBottom: 10 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--fg-2)' }}>
+                {group.label}
+              </div>
+              {group.items.map(item => (
+                <ChecklistRow key={item.id} id={item.id} label={item.label} checked={initChecked(item.id)} onToggle={toggleCheckItem}/>
+              ))}
+            </div>
+          ))}
+
+          {/* Custom items */}
+          {customItems.length > 0 && (
+            <div style={{ ...glass, padding: '14px 16px', marginBottom: 10 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--fg-2)' }}>Eigene Punkte</div>
+              {customItems.map(item => (
+                <ChecklistRow key={item.id} id={item.id} label={item.label} checked={initChecked(item.id)} onToggle={toggleCheckItem}/>
+              ))}
+            </div>
+          )}
+
+          {/* Add custom item */}
+          {addingItem ? (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <input
+                autoFocus
+                value={newItem}
+                onChange={e => setNewItem(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addCustomItem(); if (e.key === 'Escape') setAddingItem(false) }}
+                placeholder="Neuer Punkt..."
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button onClick={addCustomItem} style={{ padding: '10px 16px', borderRadius: 12, background: 'var(--turkis)', border: 'none', color: '#1F1402', fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>+</button>
+              <button onClick={() => setAddingItem(false)} style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--fg-3)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>✕</button>
+            </div>
+          ) : (
+            <button onClick={() => setAddingItem(true)} style={{
+              width: '100%', padding: '14px 0', borderRadius: 18,
+              background: 'none', border: '2px dashed rgba(255,255,255,0.10)',
+              color: 'var(--fg-3)', fontSize: 14, fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontFamily: 'var(--font-body)',
+            }}>
+              <IconPlus size={16}/> Eigenen Punkt hinzufügen
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

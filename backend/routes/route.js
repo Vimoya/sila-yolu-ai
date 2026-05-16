@@ -65,13 +65,14 @@ const ROUTE_DATA = {
     countries: ['Deutschland', 'Österreich', 'Slowenien', 'Kroatien', 'Serbien', 'Bulgarien', 'Türkei'],
     baseKm: 2380,
     vignetteCost: 31,
-    tollCost: 55,
+    tollCost: 62,
     recommended: false,
     fees: [
       { type: 'vignette', country: '🇦🇹 Österreich', name: 'Autobahnvignette', cost: 15.40, note: '10 Tage digital — online kaufen vor Fahrt', required: true },
+      { type: 'tunnel', country: '🇦🇹 Österreich', name: 'Karawankentunnel (AT/SI)', cost: 7.90, note: 'Grenztunnel zwischen Österreich und Slowenien — Maut an Kabine', required: true },
       { type: 'vignette', country: '🇸🇮 Slowenien', name: 'DarsGo Vignette', cost: 15.50, note: '7 Tage — darsgo.si oder an der Grenze', required: true },
       { type: 'toll', country: '🇭🇷 Kroatien', name: 'Autobahnmaut', cost: 18.00, note: 'Bar/Karte — ca. 18€ für die gesamte Strecke', required: true },
-      { type: 'toll', country: '🇭🇷 Kroatien', name: 'Učka Tunnel', cost: 8.00, note: 'Tunnel durch Ćićarija — Pflicht auf dieser Route', required: true },
+      { type: 'tunnel', country: '🇭🇷 Kroatien', name: 'Učka Tunnel', cost: 8.00, note: 'Tunnel durch Ćićarija auf der Küstenroute', required: true },
       { type: 'toll', country: '🇷🇸 Serbien', name: 'Autobahnmaut', cost: 12.00, note: 'Bar oder Karte — ca. 12€', required: true },
       { type: 'toll', country: '🇧🇬 Bulgarien', name: 'Vignette + Maut', cost: 10.50, note: 'e-Vignette 7 Tage', required: true },
       { type: 'toll', country: '🇹🇷 Türkei', name: 'HGS/OGS Transponder', cost: 15.00, note: 'Transponder an Kapıkule Grenze', required: true },
@@ -83,10 +84,11 @@ const ROUTE_DATA = {
     countries: ['Deutschland', 'Österreich', 'Slowenien', 'Serbien', 'Nordmazedonien', 'Griechenland', 'Türkei'],
     baseKm: 2450,
     vignetteCost: 31,
-    tollCost: 65,
+    tollCost: 73,
     recommended: false,
     fees: [
       { type: 'vignette', country: '🇦🇹 Österreich', name: 'Autobahnvignette', cost: 15.40, note: '10 Tage digital — online kaufen vor Fahrt', required: true },
+      { type: 'tunnel', country: '🇦🇹 Österreich', name: 'Karawankentunnel (AT/SI)', cost: 7.90, note: 'Grenztunnel zwischen Österreich und Slowenien', required: true },
       { type: 'vignette', country: '🇸🇮 Slowenien', name: 'DarsGo Vignette', cost: 15.50, note: '7 Tage — darsgo.si oder an der Grenze', required: true },
       { type: 'toll', country: '🇷🇸 Serbien', name: 'Autobahnmaut', cost: 12.00, note: 'Bar oder Karte — ca. 12€ gesamt', required: true },
       { type: 'info', country: '🇲🇰 Nordmazedonien', name: 'Keine Vignette', cost: 0, note: 'PKW kostenlos, kurze Durchfahrt', required: false },
@@ -117,7 +119,7 @@ const ROUTE_DATA = {
 
 // Verified city-to-Istanbul distances (one-way road km, not straight line)
 const DEST_DISTANCES = {
-  istanbul: 0,
+  istanbul: 0, kapikule: 0, kapiküle: 0, kapıkule: 0,
   izmir: 480,       // Istanbul → Izmir via TEM/O-4: ~480km
   ankara: 453,      // Istanbul → Ankara TEM: ~453km
   bursa: 245,       // Istanbul → Bursa: ~245km
@@ -174,6 +176,143 @@ function calcRouteKm(routeKey, startCity, destCity) {
   const startOffset = getOffset(startCity, START_OFFSETS) ?? 0
   const destOffset = getOffset(destCity, DEST_DISTANCES) ?? 0
   return r.baseKm + startOffset + destOffset
+}
+
+// Country code from city name — used to skip fees for already-passed countries
+const CITY_COUNTRY = {
+  wien: 'AT', vienna: 'AT', graz: 'AT', salzburg: 'AT', linz: 'AT', innsbruck: 'AT',
+  budapest: 'HU', debrecen: 'HU',
+  zagreb: 'HR', split: 'HR',
+  ljubljana: 'SI',
+  belgrad: 'RS', beograd: 'RS', nis: 'RS', novi: 'RS',
+  sofia: 'BG', plovdiv: 'BG', varna: 'BG',
+  bukarest: 'RO', bucharest: 'RO', cluj: 'RO', timisoara: 'RO',
+  skopje: 'MK',
+  athen: 'GR', athens: 'GR', thessaloniki: 'GR',
+  istanbul: 'TR', ankara: 'TR', izmir: 'TR', bursa: 'TR', antalya: 'TR',
+  paris: 'FR', lyon: 'FR', marseille: 'FR',
+  amsterdam: 'NL', rotterdam: 'NL',
+  brüssel: 'BE', brussels: 'BE',
+  zürich: 'CH', zuerich: 'CH', bern: 'CH', basel: 'CH',
+  prag: 'CZ', prague: 'CZ',
+  warschau: 'PL', warsaw: 'PL', krakau: 'PL',
+  london: 'GB',
+  madrid: 'ES', barcelona: 'ES',
+}
+
+// Country flag prefix → country code mapping for fees
+const FEE_COUNTRY_CODE = {
+  '🇦🇹': 'AT', '🇭🇺': 'HU', '🇸🇮': 'SI', '🇭🇷': 'HR',
+  '🇷🇸': 'RS', '🇧🇬': 'BG', '🇷🇴': 'RO', '🇲🇰': 'MK',
+  '🇬🇷': 'GR', '🇹🇷': 'TR', '🇩🇪': 'DE', '🇫🇷': 'FR',
+}
+
+// Route country order — fees for countries already passed (start is in/past them) are skipped
+const ROUTE_ORDER = {
+  austria_hungary: ['DE', 'AT', 'HU', 'RS', 'BG', 'TR'],
+  croatia_route:   ['DE', 'AT', 'SI', 'HR', 'RS', 'BG', 'TR'],
+  romania_route:   ['DE', 'AT', 'HU', 'RO', 'BG', 'TR'],
+  greece_route:    ['DE', 'AT', 'SI', 'RS', 'MK', 'GR', 'TR'],
+}
+
+function adjustFeesForStart(fees, routeKey, startCity) {
+  const key = startCity.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(',')[0].trim()
+  let startCountry = null
+  for (const [city, cc] of Object.entries(CITY_COUNTRY)) {
+    if (key.includes(city) || city.includes(key)) { startCountry = cc; break }
+  }
+  if (!startCountry || startCountry === 'DE') return fees
+
+  const order = ROUTE_ORDER[routeKey] || []
+  const startIdx = order.indexOf(startCountry)
+  if (startIdx <= 0) return fees
+
+  // Countries already passed (including start country — no need to buy their vignette/toll if already there)
+  const passed = new Set(order.slice(0, startIdx))
+
+  return fees.map(fee => {
+    const flagMatch = fee.country?.match(/[\u{1F1E0}-\u{1F1FF}]{2}/u)?.[0]
+    const cc = flagMatch ? FEE_COUNTRY_CODE[flagMatch] : null
+    if (!cc || !passed.has(cc)) return fee
+    return {
+      ...fee,
+      cost: 0,
+      note: `Nicht benötigt — Startort liegt bereits in/nach ${fee.country.replace(/[\u{1F1E0}-\u{1F1FF}]{2}/u, '').trim()}`,
+      required: false,
+    }
+  })
+}
+
+// Extra fees for travelers starting outside Germany (prepended to route fees)
+function getExtraFeesForStart(startCity) {
+  const key = startCity.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(',')[0].trim()
+  const extra = []
+
+  const isGB = key.includes('london') || key.includes('england') || key.includes('birmingham') || key.includes('manchester') || key.includes('leeds') || key.includes('glasgow')
+  const isFR = ['paris', 'lyon', 'marseille', 'lille', 'bordeaux', 'strasbourg', 'toulouse', 'nantes'].some(c => key.includes(c))
+  const isNL = ['amsterdam', 'rotterdam', 'utrecht', 'eindhoven', 'den haag', 'haag'].some(c => key.includes(c))
+  const isBE = ['brüssel', 'brussels', 'bruxelles', 'antwerpen', 'antwerp', 'gent', 'ghent', 'liège'].some(c => key.includes(c))
+  const isCH = ['zürich', 'zuerich', 'zurich', 'bern', 'basel', 'genf', 'geneva', 'lausanne'].some(c => key.includes(c))
+  const isPL = ['warschau', 'warsaw', 'krakau', 'krakow', 'poznan', 'breslau', 'wroclaw'].some(c => key.includes(c))
+  const isDK = ['kopenhagen', 'copenhagen', 'aarhus', 'odense'].some(c => key.includes(c))
+  const isSE = ['stockholm', 'göteborg', 'gothenburg', 'malmö', 'malmo'].some(c => key.includes(c))
+  const isES = ['madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao', 'zaragoza'].some(c => key.includes(c))
+  const isIT = ['rom', 'rome', 'mailand', 'milan', 'florenz', 'florence', 'neapel', 'naples', 'venedig', 'venice', 'turin'].some(c => key.includes(c))
+
+  if (isGB) {
+    extra.push({ type: 'tunnel', country: '🇬🇧 England', name: 'Eurotunnel / Fähre (Dover–Calais)', cost: 45, note: 'Folkestone → Coquelles via Eurotunnel (~35min) oder Fähre (~90min) — Preise je nach Buchung 30–70€', required: true })
+    extra.push({ type: 'info', country: '🇬🇧 England', name: 'UK → FR: Keine Vignette', cost: 0, note: 'Großbritannien hat keine Autobahngebühren — Eurotunnel/Fähre ist die einzige Hauptkosten', required: false })
+  }
+
+  if (isFR) {
+    const dist = isFR && (key.includes('paris') || key.includes('reims') || key.includes('strasbourg') || key.includes('lille')) ? 'bis zur deutschen Grenze' : 'bis München'
+    extra.push({ type: 'toll', country: '🇫🇷 Frankreich', name: 'Autoroute Maut (FR)', cost: key.includes('marseille') ? 70 : key.includes('lyon') ? 50 : 35, note: `Mautstellen auf französischen Autobahnen ${dist} — ca. 35–70€ je nach Route (A4/A6/A36)`, required: true })
+  }
+
+  if (isGB && !isFR) {
+    // After Eurotunnel, France section to German border
+    extra.push({ type: 'toll', country: '🇫🇷 Frankreich', name: 'Autoroute Maut (Calais→DE)', cost: 30, note: 'Maut auf der A26/A4 von Calais zur deutschen Grenze — ca. 25–35€', required: true })
+  }
+
+  if (isCH) {
+    extra.push({ type: 'vignette', country: '🇨🇭 Schweiz', name: 'Autobahnvignette CH', cost: 43, note: 'Jahresvignette 40 CHF (~43€) — obligatorisch, an der Grenze oder online', required: true })
+  }
+
+  if (isPL) {
+    extra.push({ type: 'vignette', country: '🇵🇱 Polen', name: 'e-TOLL Polen', cost: 8, note: 'Elektronische Maut auf Autobahnen in Polen — ca. 5–15€ je nach Route', required: true })
+  }
+
+  if (isDK) {
+    extra.push({ type: 'tunnel', country: '🇩🇰 Dänemark', name: 'Øresundbrücke oder Fähre', cost: 65, note: 'Øresundbrücke Kopenhagen→Malmö (50€) + Fehmarnbelt-Fähre (15€) oder nur Vogelfluglinie-Fähre', required: true })
+  }
+
+  if (isSE) {
+    extra.push({ type: 'tunnel', country: '🇸🇪 Schweden', name: 'Øresundbrücke (Malmö→Kopenhagen)', cost: 65, note: 'Øresundbrücke 50€ + Fähre nach Deutschland 15€ — alternativ Göteborg→Kiel Fähre (~100€', required: true })
+  }
+
+  if (isES) {
+    const esToll = key.includes('madrid') ? 80 : key.includes('barcelona') ? 40 : 65
+    extra.push({ type: 'toll', country: '🇪🇸 Spanien', name: 'Autopista Maut (ES)', cost: esToll, note: `Mautstrecken auf spanischen Autobahnen — ca. ${esToll}€ bis zur französischen Grenze`, required: true })
+    extra.push({ type: 'toll', country: '🇫🇷 Frankreich', name: 'Autoroute Maut (ES→DE)', cost: 55, note: 'Spanische Grenze bis Deutschland via A9/A6/A4 — ca. 45–65€', required: true })
+  }
+
+  if (isIT) {
+    const itToll = key.includes('rom') || key.includes('rome') || key.includes('neap') ? 60 : key.includes('florenz') || key.includes('florence') ? 40 : 25
+    extra.push({ type: 'toll', country: '🇮🇹 Italien', name: 'Autostrada Maut (IT)', cost: itToll, note: `Maut auf italienischen Autobahnen — ca. ${itToll}€ bis zur österreichischen/deutschen Grenze`, required: true })
+    if (key.includes('rom') || key.includes('rome') || key.includes('neap') || key.includes('florenz') || key.includes('florence') || key.includes('venedig') || key.includes('venice')) {
+      extra.push({ type: 'tunnel', country: '🇮🇹 Italien', name: 'Brenner-Pass oder Tauerntunnel', cost: 12, note: 'Brenner (A22, ca. 12€) oder Tauernautobahn nach Österreich — je nach Route', required: true })
+    }
+  }
+
+  // NL and BE: no extra fees (toll-free motorways)
+  if (isNL && extra.length === 0) {
+    extra.push({ type: 'info', country: '🇳🇱 Niederlande', name: 'Keine Maut in NL', cost: 0, note: 'Niederländische Autobahnen sind mautfrei — keine Extrakosten bis zur deutschen Grenze', required: false })
+  }
+  if (isBE && extra.length === 0) {
+    extra.push({ type: 'info', country: '🇧🇪 Belgien', name: 'Keine Maut in BE', cost: 0, note: 'Belgische Autobahnen sind mautfrei — keine Extrakosten bis zur deutschen Grenze', required: false })
+  }
+
+  return extra
 }
 
 // Per-route tank stop checkpoints (km from Munich, flag, city, note, tip=highlight)
@@ -278,8 +417,10 @@ router.post('/calculate', async (req, res) => {
     ? codes.reduce((sum, c) => sum + (countryPrices[c]?.price ?? fuelPrice), 0) / codes.length
     : fuelPrice
   const fuelCost = Math.round((totalKm / 100) * consumption * avgPrice)
-  const tollCost = avoidToll ? 0 : route.tollCost
-  const vignetteCost = route.vignetteCost
+  const extraFees = getExtraFeesForStart(start)
+  const adjustedFees = [...extraFees, ...adjustFeesForStart(route.fees, routeKey, start)]
+  const tollCost = avoidToll ? 0 : adjustedFees.filter(f => (f.type === 'toll' || f.type === 'tunnel') && f.required !== false).reduce((s, f) => s + f.cost, 0)
+  const vignetteCost = adjustedFees.filter(f => f.type === 'vignette' && f.required !== false).reduce((s, f) => s + f.cost, 0)
   const totalCost = fuelCost + tollCost + vignetteCost
 
   const tankStops = calcTankStops(routeKey, totalKm, fuel)
@@ -361,7 +502,7 @@ Regeln:
 
   res.json({
     totalKm, hours, fuelCost, tollCost, vignetteCost, totalCost, litersNeeded,
-    route: { key: routeKey, name: route.name, flags: route.flags, countries: route.countries, fees: route.fees, recommended: route.recommended },
+    route: { key: routeKey, name: route.name, flags: route.flags, countries: route.countries, fees: adjustedFees, recommended: route.recommended },
     tankStops, aiTankStops, speedLimits, aiTips, countryPrices,
   })
 })
@@ -380,11 +521,14 @@ router.post('/compare', async (req, res) => {
       ? codes.reduce((sum, c) => sum + (countryPrices[c]?.price ?? fuelPrice), 0) / codes.length
       : fuelPrice
     const fuelCost = Math.round((km / 100) * consumption * avgPrice)
-    const tollCost = avoidToll ? 0 : r.tollCost
-    const total = fuelCost + tollCost + r.vignetteCost
+    const extraFees = getExtraFeesForStart(start)
+    const adjFees = [...extraFees, ...adjustFeesForStart(r.fees, key, start)]
+    const tollCost = avoidToll ? 0 : adjFees.filter(f => (f.type === 'toll' || f.type === 'tunnel') && f.required !== false).reduce((s, f) => s + f.cost, 0)
+    const vignetteCost = adjFees.filter(f => f.type === 'vignette' && f.required !== false).reduce((s, f) => s + f.cost, 0)
+    const total = fuelCost + tollCost + vignetteCost
     const tankStops = calcTankStops(key, km, fuel)
     const speedLimits = SPEED_LIMITS[key] || SPEED_LIMITS.austria_hungary
-    return { key, name: r.name, flags: r.flags, countries: r.countries, km, hours, fuelCost, tollCost, vignetteCost: r.vignetteCost, total, fees: r.fees, recommended: r.recommended, tankStops, speedLimits, countryPrices }
+    return { key, name: r.name, flags: r.flags, countries: r.countries, km, hours, fuelCost, tollCost, vignetteCost, total, fees: adjFees, recommended: r.recommended, tankStops, speedLimits, countryPrices }
   })
 
   res.json({ routes: results, start, dest })

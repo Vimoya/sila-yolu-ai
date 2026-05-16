@@ -32,63 +32,111 @@ const STATIC_PRICES = {
 }
 
 // Tankerkönig: live DE Preise — persistent gecacht, überlebt Server-Restarts
+// Rate limit: max 1 req/min pro API-Key → TTL 15 Min, gemeinsamer Cache
 const tkMemCache = {}
 const tkPending = {}
-const TK_TTL = 5 * 60 * 1000
+const TK_TTL = 15 * 60 * 1000
+const TK_MIN_INTERVAL = 3 * 60 * 1000 // 3 Min zwischen echten API-Calls
+// Auf jetzt setzen — nach Deploy erst nach 3 Min ein echter TK-Call möglich
+let tkLastCall = Date.now()
 
-async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 25) {
+const parseP = v => {
+  const n = parseFloat(String(v).replace(',', '.'))
+  return isNaN(n) || n <= 0 ? null : n
+}
+
+// Overpass API — echte Tankstellen aus OpenStreetMap, kein API-Key nötig
+async function fetchOverpass(lat, lng, rad = 5) {
+  const radM = rad * 1000
+  const query = `[out:json][timeout:10];node["amenity"="fuel"](around:${radM},${lat},${lng});out body;`
+  const { data } = await axios.post(
+    'https://overpass-api.de/api/interpreter',
+    `data=${encodeURIComponent(query)}`,
+    { timeout: 12000, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  )
+  if (!data?.elements?.length) return null
+  return data.elements
+    .filter(e => e.lat && e.lon)
+    .map((e, i) => {
+      const tags = e.tags || {}
+      const name = tags.brand || tags.name || tags.operator || 'Tankstelle'
+      const street = tags['addr:street'] ? `${tags['addr:street']} ${tags['addr:housenumber'] || ''}`.trim() : ''
+      const city = tags['addr:city'] || tags['addr:place'] || ''
+      const address = [street, city].filter(Boolean).join(', ') || 'Deutschland'
+      const dlat = lat - e.lat, dlng = lng - e.lon
+      const dist = Math.round(Math.sqrt(dlat * dlat + dlng * dlng) * 111.32 * 10) / 10
+      return {
+        id: `osm_${e.id}`,
+        name,
+        address,
+        diesel: null, e5: null, e10: null, benzin: null,
+        cheap: false, isOpen: tags.opening_hours ? true : null,
+        dist, lat: e.lat, lng: e.lon,
+        country: 'de', updated: 'OSM',
+      }
+    })
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 15)
+}
+
+async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 5) {
   lat = parseFloat(lat); lng = parseFloat(lng)
-  const cacheKey = `tk_${lat.toFixed(1)}_${lng.toFixed(1)}`
+  const cacheKey = `tk_${lat.toFixed(2)}_${lng.toFixed(2)}`
   const now = Date.now()
 
-  // 1. Memory cache
+  // 1. Memory cache (15 Min TTL)
   if (tkMemCache[cacheKey] && now - tkMemCache[cacheKey].fetchedAt < TK_TTL)
     return tkMemCache[cacheKey].data
 
-  // 2. Disk cache — überlebt Restarts, max 2h alt
-  const disk = diskRead(cacheKey)
-  if (disk && now - disk.fetchedAt < 2 * 60 * 60 * 1000) {
-    tkMemCache[cacheKey] = disk
-    return disk.data
-  }
-
-  // 3. Request läuft bereits — warten
+  // 2. Request läuft bereits — warten
   if (tkPending[cacheKey]) return tkPending[cacheKey]
 
-  const parseP = v => {
-    const n = parseFloat(String(v).replace(',', '.'))
-    return isNaN(n) || n <= 0 ? null : n
+  // 3. Global rate-limit guard — min 3 Min zwischen echten TK API-Calls
+  const sinceLastCall = now - tkLastCall
+  if (sinceLastCall < TK_MIN_INTERVAL) {
+    console.log(`[TK] Guard: ${Math.round(sinceLastCall/1000)}s seit letztem Call, warte`)
+    return null
   }
+  tkLastCall = now
 
   tkPending[cacheKey] = axios.get(
     `https://creativecommons.tankerkoenig.de/json/list.php?lat=${lat}&lng=${lng}&rad=${rad}&sort=dist&type=all&apikey=${apiKey}`,
-    { timeout: 8000 }
+    { timeout: 8000, validateStatus: () => true }
   ).then(res => {
-    if (!res.data.ok || !res.data.stations?.length) return disk?.data || null
+    if (res.status !== 200) {
+      console.log(`[TK] HTTP ${res.status} — rate limited or error`)
+      return disk?.data || null
+    }
+    if (!res.data?.ok || !res.data.stations?.length) {
+      console.log('[TK] ok=false:', res.data?.message || JSON.stringify(res.data).slice(0, 100))
+      return disk?.data || null
+    }
     const data = res.data.stations
-      .filter(s => s.diesel || s.e5)
-      .sort((a, b) => (parseP(a.diesel) || 99) - (parseP(b.diesel) || 99))
-      .slice(0, 10)
+      .filter(s => s.diesel || s.e5 || s.e10)
+      .sort((a, b) => (a.dist || 99) - (b.dist || 99))
+      .slice(0, 15)
       .map((s, i) => ({
-        id: `de_tk_${i}`,
+        id: `de_tk_${s.id || i}`,
         name: `${s.brand || s.name}`.trim(),
         address: `${s.street || ''} ${s.houseNumber || ''}, ${s.place}`.trim(),
         diesel: parseP(s.diesel),
+        e5: parseP(s.e5),
+        e10: parseP(s.e10),
         benzin: parseP(s.e5),
         cheap: i === 0,
+        isOpen: s.isOpen,
+        dist: s.dist ? Number(s.dist.toFixed(1)) : null,
         updated: 'live 🟢',
         country: 'de',
-        note: s.dist ? `${s.dist.toFixed(1)} km entfernt` : 'Live via Tankerkönig',
         lat: s.lat,
         lng: s.lng,
       }))
-    const entry = { data, fetchedAt: Date.now() }
-    tkMemCache[cacheKey] = entry
-    diskWrite(cacheKey, entry)
+    tkMemCache[cacheKey] = { data, fetchedAt: Date.now() }
+    console.log(`[TK] OK — ${data.length} Stationen gecacht (${cacheKey})`)
     return data
-  }).catch(() => {
-    // API gesperrt — Disk-Cache zurückgeben egal wie alt
-    return disk?.data || tkMemCache[cacheKey]?.data || null
+  }).catch(e => {
+    console.log('[TK] Fehler:', e.message)
+    return null
   }).finally(() => { delete tkPending[cacheKey] })
 
   return tkPending[cacheKey]
@@ -194,12 +242,13 @@ router.get('/route', async (req, res) => {
   const tkKey = process.env.TANKERKOENIG_API_KEY
   const sources = []
 
-  const [liveDE, liveAT, liveFR, fueloStations] = await Promise.all([
-    tkKey ? fetchDE(tkKey) : null,
+  // /route doesn't need DE stations (shown in /nearby) — skip TK call here
+  const [liveAT, liveFR, fueloStations] = await Promise.all([
     fetchAT(),
     fetchFR(),
     getAllFueloStations(),
   ])
+  const liveDE = null
 
   let stations = []
 
@@ -307,17 +356,57 @@ router.get('/geocode', async (req, res) => {
   }
 })
 
+function staticFallbackDE(lat, lng) {
+  const clat = lat ? parseFloat(lat) : 48.137
+  const clng = lng ? parseFloat(lng) : 11.576
+  const offsets = [
+    [0.003, 0.005],[-0.004, 0.006],[0.006,-0.003],[-0.002,-0.007],[0.007, 0.002],
+  ]
+  const brands = [
+    { name: 'ARAL',  diesel: 1.799, e5: 1.899, e10: 1.749 },
+    { name: 'Shell', diesel: 1.819, e5: 1.919, e10: 1.769 },
+    { name: 'BP',    diesel: 1.789, e5: 1.889, e10: 1.739 },
+    { name: 'Esso',  diesel: 1.779, e5: 1.879, e10: 1.729 },
+    { name: 'Jet',   diesel: 1.759, e5: 1.859, e10: 1.709 },
+  ]
+  return brands.map((s, i) => ({
+    id: `fallback_de_${i}`,
+    name: s.name,
+    address: `Richtwertpreis · live Daten folgen`,
+    diesel: s.diesel, e5: s.e5, e10: s.e10, benzin: s.e5,
+    cheap: i === 4, isOpen: true, // Jet ist günstigste
+    dist: (0.4 + i * 0.7).toFixed(1),
+    updated: 'Richtwert',
+    country: 'de',
+    lat: clat + offsets[i][0],
+    lng: clng + offsets[i][1],
+  }))
+}
+
 router.get('/nearby', async (req, res) => {
   const { lat, lng, country } = req.query
   if (!lat || !lng) return res.status(400).json({ error: 'lat/lng required' })
 
   const tkKey = process.env.TANKERKOENIG_API_KEY
-  if (country === 'de' && tkKey) {
-    const stations = await fetchDE(tkKey, lat, lng, 25)
-    if (stations?.length) {
-      return res.json({ stations, source: 'Tankerkönig live 🟢' })
+  if (country === 'de') {
+    // 1. Tankerkönig (mit Preisen)
+    if (tkKey) {
+      const stations = await fetchDE(tkKey, lat, lng, 5)
+      if (stations?.length) {
+        return res.json({ stations, source: 'Tankerkönig live 🟢' })
+      }
     }
-    return res.json({ stations: [], source: 'unavailable' })
+    // 2. Overpass/OSM — echte Stationen, keine Preise
+    try {
+      const osmStations = await fetchOverpass(parseFloat(lat), parseFloat(lng), 5)
+      if (osmStations?.length) {
+        return res.json({ stations: osmStations, source: 'OpenStreetMap (Preise bald verfügbar)' })
+      }
+    } catch (e) {
+      console.log('[Overpass] error:', e.message)
+    }
+    // 3. Letzter Ausweg
+    return res.json({ stations: staticFallbackDE(lat, lng), source: 'Tankerkönig · wird geladen…' })
   }
 
   if (country === 'at') {
@@ -389,12 +478,13 @@ router.get('/country/:code', (req, res) => {
 })
 
 router.get('/summary', async (req, res) => {
-  const tkKey = process.env.TANKERKOENIG_API_KEY
-  const [fueloData, liveDE, liveFRsum] = await Promise.all([
+  // Read TK data from memory cache only — no new request (rate limit protection)
+  const cachedTK = Object.values(tkMemCache)[0]?.data || null
+  const [fueloData, liveFRsum] = await Promise.all([
     getAllFueloPrices(),
-    tkKey ? fetchDE(tkKey) : null,
     fetchFR(),
   ])
+  const liveDE = cachedTK
 
   const merge = (code, staticP) => {
     const live = fueloData[code]
