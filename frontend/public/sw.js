@@ -1,4 +1,4 @@
-const CACHE = 'sila-assets-v1'
+const CACHE = 'sila-assets-v20260516-2'
 
 self.addEventListener('message', e => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting()
