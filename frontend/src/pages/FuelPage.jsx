@@ -305,13 +305,6 @@ export default function FuelPage() {
     )
   }, [fetchStations])
 
-  // On mount: only auto-fetch if logged in, no cooldown, and no cached result
-  useEffect(() => {
-    if (!user) return
-    const left = fuelLastSearchAt ? Math.max(0, COOLDOWN_MS - (Date.now() - fuelLastSearchAt)) : 0
-    if (left > 0) return
-    if (!fuelLastSearch) getGPS()
-  }, [user])
 
   // Search suggestions via Nominatim
   useEffect(() => {
