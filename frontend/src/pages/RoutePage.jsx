@@ -633,6 +633,53 @@ export default function RoutePage() {
           )}
 
           {/* AI tips */}
+          {selectedResult?.waypoints?.length > 0 && (
+            <div style={{ ...glass, padding: 16, marginBottom: 14 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+                🗺️ {t.routeDetail || 'Detailroute'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 14 }}>
+                {t.routeDetailSub || 'Städte & Grenzübergänge auf deiner Route'}
+              </div>
+              <div style={{ position: 'relative' }}>
+                {/* vertical line */}
+                <div style={{ position: 'absolute', left: 13, top: 8, bottom: 8, width: 1, background: 'rgba(255,255,255,0.07)' }}/>
+                {selectedResult.waypoints.map((wp, i) => {
+                  const isBorder = wp.type === 'border'
+                  const accentColor = isBorder ? 'var(--orange)' : 'var(--fg-3)'
+                  const dotColor = isBorder ? 'var(--orange)' : 'rgba(255,255,255,0.18)'
+                  const isLast = i === selectedResult.waypoints.length - 1
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: isLast ? 0 : 10, position: 'relative' }}>
+                      {/* dot */}
+                      <div style={{
+                        width: 14, height: 14, borderRadius: '50%', flexShrink: 0, marginTop: 3,
+                        background: dotColor,
+                        border: isBorder ? '2px solid var(--orange)' : '2px solid rgba(255,255,255,0.15)',
+                        boxShadow: isBorder ? '0 0 6px rgba(255,138,61,0.4)' : 'none',
+                        zIndex: 1,
+                      }}/>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 14 }}>{wp.flag}</span>
+                          <span style={{ fontSize: 13, fontWeight: isBorder ? 700 : 500, color: isBorder ? 'var(--orange)' : 'var(--fg)', letterSpacing: isBorder ? 0.2 : 0 }}>
+                            {wp.name}
+                          </span>
+                          <span style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-mono)', fontWeight: 600, marginLeft: 'auto', flexShrink: 0 }}>
+                            {wp.km} km
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: isBorder ? 'rgba(255,138,61,0.75)' : 'var(--fg-3)', marginTop: 2, lineHeight: 1.4 }}>
+                          {wp.note}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {(aiTips?.length > 0 || tipsLoading) && (
             <div style={{ ...glass, padding: 16, marginBottom: 14 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 12 }}>

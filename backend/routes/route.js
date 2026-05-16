@@ -315,6 +315,77 @@ function getExtraFeesForStart(startCity) {
   return extra
 }
 
+// Detailed waypoints per route — cities, borders, km from Munich
+const ROUTE_WAYPOINTS = {
+  austria_hungary: [
+    { type: 'city',   flag: '🇩🇪', name: 'München',          km: 0,    note: 'Start · A8 Richtung Salzburg' },
+    { type: 'city',   flag: '🇩🇪', name: 'Rosenheim',         km: 60,   note: 'Letzte günstige DE-Tankstellen' },
+    { type: 'border', flag: '🇩🇪🇦🇹', name: 'Grenze DE/AT',  km: 130,  note: 'Salzburg-Nord · Keine Kontrolle (Schengen) · Vignette kaufen!' },
+    { type: 'city',   flag: '🇦🇹', name: 'Salzburg',          km: 135,  note: 'A1 Richtung Wien · Raststätte empfohlen' },
+    { type: 'city',   flag: '🇦🇹', name: 'Graz',              km: 320,  note: 'A2 Richtung Spielfeld · Tanken vor HU empfohlen' },
+    { type: 'border', flag: '🇦🇹🇭🇺', name: 'Grenze AT/HU',  km: 450,  note: 'Hegyeshalom · Passkontrollen möglich · e-Matrica kaufen' },
+    { type: 'city',   flag: '🇭🇺', name: 'Budapest',          km: 560,  note: 'M1/M5 Richtung Kelebia · MOL Tankstellen empfohlen' },
+    { type: 'border', flag: '🇭🇺🇷🇸', name: 'Grenze HU/RS',  km: 720,  note: 'Horgoš-Röszke · Oft Wartezeit 30–120 Min!' },
+    { type: 'city',   flag: '🇷🇸', name: 'Novi Sad',          km: 780,  note: 'A1 Richtung Belgrad' },
+    { type: 'city',   flag: '🇷🇸', name: 'Belgrad',           km: 880,  note: 'Kreuzung A1/A2 · Gute Raststätten' },
+    { type: 'city',   flag: '🇷🇸', name: 'Niš',               km: 1050, note: '★ Günstigster Diesel — voll tanken! NIS Tankstellen' },
+    { type: 'border', flag: '🇷🇸🇧🇬', name: 'Grenze RS/BG',  km: 1180, note: 'Gradina-Kalotina · Passkontrollen · e-Vignette kaufen' },
+    { type: 'city',   flag: '🇧🇬', name: 'Sofia',             km: 1280, note: 'A4 Richtung Plovdiv · Lukoil/OMV Stationen' },
+    { type: 'city',   flag: '🇧🇬', name: 'Plovdiv',           km: 1430, note: 'Letzte große Stadt vor TR-Grenze' },
+    { type: 'border', flag: '🇧🇬🇹🇷', name: 'Grenze BG/TR',  km: 1580, note: 'Kapıkule · Wartezeit 1–4h · HGS kaufen · Passcheck' },
+    { type: 'city',   flag: '🇹🇷', name: 'Edirne',            km: 1590, note: 'Erste TR-Stadt · Wechsel zu TL · Tanken möglich' },
+    { type: 'city',   flag: '🇹🇷', name: 'İstanbul',          km: 1900, note: 'Ziel via TEM Autobahn (O-1/O-2)' },
+  ],
+  croatia_route: [
+    { type: 'city',   flag: '🇩🇪', name: 'München',           km: 0,    note: 'Start · A8 Richtung Salzburg' },
+    { type: 'border', flag: '🇩🇪🇦🇹', name: 'Grenze DE/AT',  km: 130,  note: 'Salzburg · Vignette kaufen' },
+    { type: 'city',   flag: '🇦🇹', name: 'Salzburg',          km: 135,  note: 'A10 Richtung Villach' },
+    { type: 'city',   flag: '🇦🇹', name: 'Villach',           km: 330,  note: 'Vor Karawankentunnel — Maut zahlen' },
+    { type: 'border', flag: '🇦🇹🇸🇮', name: 'Grenze AT/SI',  km: 360,  note: 'Karawankentunnel (7,90€) · DarsGo Vignette kaufen' },
+    { type: 'city',   flag: '🇸🇮', name: 'Ljubljana',         km: 430,  note: 'A1/E70 Richtung Zagreb · Günstiger tanken' },
+    { type: 'border', flag: '🇸🇮🇭🇷', name: 'Grenze SI/HR',  km: 520,  note: 'Bregana · Schengen-intern · HR Maut beginnt' },
+    { type: 'city',   flag: '🇭🇷', name: 'Zagreb',            km: 560,  note: 'A3 Richtung Slavonski Brod · INA tanken' },
+    { type: 'city',   flag: '🇭🇷', name: 'Slavonski Brod',    km: 800,  note: '★ Vor RS-Grenze voll tanken!' },
+    { type: 'border', flag: '🇭🇷🇷🇸', name: 'Grenze HR/RS',  km: 850,  note: 'Stara Gradiška · Passkontrollen' },
+    { type: 'city',   flag: '🇷🇸', name: 'Belgrad',           km: 980,  note: 'NIS-Tankstellen · Weiter A1 Richtung Niš' },
+    { type: 'city',   flag: '🇷🇸', name: 'Niš',               km: 1150, note: '★ Günstigster Diesel!' },
+    { type: 'border', flag: '🇷🇸🇧🇬', name: 'Grenze RS/BG',  km: 1280, note: 'Gradina-Kalotina · e-Vignette kaufen' },
+    { type: 'city',   flag: '🇧🇬', name: 'Sofia',             km: 1380, note: 'Letzte große Stadt vor TR' },
+    { type: 'border', flag: '🇧🇬🇹🇷', name: 'Grenze BG/TR',  km: 1750, note: 'Kapıkule · HGS kaufen · Wartezeit einplanen' },
+    { type: 'city',   flag: '🇹🇷', name: 'İstanbul',          km: 2100, note: 'Ziel' },
+  ],
+  romania_route: [
+    { type: 'city',   flag: '🇩🇪', name: 'München',           km: 0,    note: 'Start · A8/A9 Richtung Wien' },
+    { type: 'border', flag: '🇩🇪🇦🇹', name: 'Grenze DE/AT',  km: 130,  note: 'Salzburg · Vignette kaufen' },
+    { type: 'city',   flag: '🇦🇹', name: 'Wien',              km: 450,  note: 'A1/E60 Richtung Hegyeshalom · Tanken empfohlen' },
+    { type: 'border', flag: '🇦🇹🇭🇺', name: 'Grenze AT/HU',  km: 510,  note: 'Hegyeshalom · e-Matrica kaufen' },
+    { type: 'city',   flag: '🇭🇺', name: 'Budapest',          km: 620,  note: 'M0 Ring · Richtung M35 / Debrecen' },
+    { type: 'border', flag: '🇭🇺🇷🇴', name: 'Grenze HU/RO',  km: 820,  note: 'Borș/Csanádpalota · Rovinieta kaufen' },
+    { type: 'city',   flag: '🇷🇴', name: 'Cluj-Napoca',       km: 950,  note: 'A3 Richtung Bukarest · Günstig tanken' },
+    { type: 'city',   flag: '🇷🇴', name: 'Bukarest',          km: 1250, note: '★ Günstigster Diesel der Route — voll tanken!' },
+    { type: 'border', flag: '🇷🇴🇧🇬', name: 'Grenze RO/BG',  km: 1380, note: 'Giurgiu-Ruse Brücke (Donau) · e-Vignette kaufen' },
+    { type: 'city',   flag: '🇧🇬', name: 'Varna / Russe',     km: 1480, note: 'Schwarzmeer-Küste oder Richtung Sofia/TR' },
+    { type: 'border', flag: '🇧🇬🇹🇷', name: 'Grenze BG/TR',  km: 1700, note: 'Kapıkule · HGS kaufen' },
+    { type: 'city',   flag: '🇹🇷', name: 'İstanbul',          km: 2000, note: 'Ziel' },
+  ],
+  greece_route: [
+    { type: 'city',   flag: '🇩🇪', name: 'München',           km: 0,    note: 'Start · A8 Richtung Salzburg' },
+    { type: 'border', flag: '🇩🇪🇦🇹', name: 'Grenze DE/AT',  km: 130,  note: 'Vignette kaufen' },
+    { type: 'city',   flag: '🇦🇹', name: 'Villach',           km: 330,  note: 'Vor Karawankentunnel' },
+    { type: 'border', flag: '🇦🇹🇸🇮', name: 'Grenze AT/SI',  km: 360,  note: 'Karawankentunnel 7,90€ · DarsGo kaufen' },
+    { type: 'city',   flag: '🇸🇮', name: 'Ljubljana',         km: 430,  note: 'E75 Richtung Belgrad' },
+    { type: 'border', flag: '🇸🇮🇷🇸', name: 'Grenze SI/RS',  km: 600,  note: 'Šid/Horgoš · Passkontrollen' },
+    { type: 'city',   flag: '🇷🇸', name: 'Belgrad',           km: 700,  note: 'E75 Richtung Niš · Tanken empfohlen' },
+    { type: 'city',   flag: '🇷🇸', name: 'Niš',               km: 870,  note: '★ Günstigster Diesel!' },
+    { type: 'border', flag: '🇷🇸🇲🇰', name: 'Grenze RS/MK',  km: 980,  note: 'Preševo-Tabanovce · Kurze Kontrolle' },
+    { type: 'city',   flag: '🇲🇰', name: 'Skopje',            km: 1050, note: 'E75 Richtung Gevgelija · günstig tanken' },
+    { type: 'border', flag: '🇲🇰🇬🇷', name: 'Grenze MK/GR',  km: 1150, note: 'Gevgelija-Evzoni · Passkontrollen · GR Maut beginnt' },
+    { type: 'city',   flag: '🇬🇷', name: 'Thessaloniki',      km: 1230, note: '★ Voll tanken vor teurer GR-Autobahn!' },
+    { type: 'border', flag: '🇬🇷🇹🇷', name: 'Grenze GR/TR',  km: 1600, note: 'Kipi-İpsala · Passkontrollen · HGS kaufen' },
+    { type: 'city',   flag: '🇹🇷', name: 'İstanbul',          km: 2100, note: 'Ziel' },
+  ],
+}
+
 // Per-route tank stop checkpoints (km from Munich, flag, city, note, tip=highlight)
 const TANK_STOPS = {
   austria_hungary: [
@@ -504,6 +575,7 @@ Regeln:
     totalKm, hours, fuelCost, tollCost, vignetteCost, totalCost, litersNeeded,
     route: { key: routeKey, name: route.name, flags: route.flags, countries: route.countries, fees: adjustedFees, recommended: route.recommended },
     tankStops, aiTankStops, speedLimits, aiTips, countryPrices,
+    waypoints: ROUTE_WAYPOINTS[routeKey] || ROUTE_WAYPOINTS.austria_hungary,
   })
 })
 
@@ -528,7 +600,7 @@ router.post('/compare', async (req, res) => {
     const total = fuelCost + tollCost + vignetteCost
     const tankStops = calcTankStops(key, km, fuel)
     const speedLimits = SPEED_LIMITS[key] || SPEED_LIMITS.austria_hungary
-    return { key, name: r.name, flags: r.flags, countries: r.countries, km, hours, fuelCost, tollCost, vignetteCost, total, fees: adjFees, recommended: r.recommended, tankStops, speedLimits, countryPrices }
+    return { key, name: r.name, flags: r.flags, countries: r.countries, km, hours, fuelCost, tollCost, vignetteCost, total, fees: adjFees, recommended: r.recommended, tankStops, speedLimits, countryPrices, waypoints: ROUTE_WAYPOINTS[key] || ROUTE_WAYPOINTS.austria_hungary }
   })
 
   res.json({ routes: results, start, dest })

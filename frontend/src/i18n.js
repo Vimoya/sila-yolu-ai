@@ -43,6 +43,8 @@ export const T = {
     resetSent: 'E-Mail gesendet! Prüfe dein Postfach.',
     deleteRoute: 'Löschen',
     min: 'Min.',
+    routeDetail: 'Detailroute',
+    routeDetailSub: 'Städte & Grenzübergänge auf deiner Route',
   },
   tr: {
     route: 'Rota', fuel: 'Yakıt', border: 'Sınır', profile: 'Profil',
@@ -83,6 +85,8 @@ export const T = {
     resetSent: 'E-posta gönderildi! Gelen kutunuzu kontrol edin.',
     deleteRoute: 'Sil',
     min: 'dak.',
+    routeDetail: 'Detaylı Rota',
+    routeDetailSub: 'Rotanızdaki şehirler ve sınır kapıları',
   },
   en: {
     route: 'Route', fuel: 'Fuel', border: 'Border', profile: 'Profile',
@@ -123,6 +127,8 @@ export const T = {
     resetSent: 'Email sent! Check your inbox.',
     deleteRoute: 'Delete',
     min: 'min.',
+    routeDetail: 'Route Detail',
+    routeDetailSub: 'Cities & border crossings on your route',
   },
 }
 
