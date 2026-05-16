@@ -105,11 +105,11 @@ async function fetchDE(apiKey, lat = 48.137, lng = 11.576, rad = 5) {
   ).then(res => {
     if (res.status !== 200) {
       console.log(`[TK] HTTP ${res.status} — rate limited or error`)
-      return disk?.data || null
+      return null
     }
     if (!res.data?.ok || !res.data.stations?.length) {
       console.log('[TK] ok=false:', res.data?.message || JSON.stringify(res.data).slice(0, 100))
-      return disk?.data || null
+      return null
     }
     const data = res.data.stations
       .filter(s => s.diesel || s.e5 || s.e10)
