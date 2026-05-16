@@ -1,346 +1,350 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { RefreshCw, X, Camera, Send, Plus, Clock } from 'lucide-react'
-import BorderCard from '../components/BorderCard'
-import { SkeletonList } from '../components/LoadingSkeleton'
+import { useStore } from '../store/useStore'
+
+const API = import.meta.env.VITE_API_BASE_URL || ''
 
 const glass = {
-  background: 'rgba(255,255,255,0.09)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  backdropFilter: 'blur(20px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  backdropFilter: 'blur(28px) saturate(140%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+  borderRadius: 22,
 }
 
+const STATUS_COLOR = { green: '#38E58A', yellow: '#F5B544', red: '#E854A8' }
+const STATUS_LABEL = { green: 'Wenig Andrang', yellow: 'Moderate Wartezeit', red: 'Stark belegt' }
+const STATUS_TIME  = { green: '< 30 Min', yellow: '30–90 Min', red: '> 90 Min' }
+
 const BORDERS = [
-  { id: 'kapikule', name: 'Kapıkule', country: 'TR 🇹🇷 / BG 🇧🇬', status: 'yellow', reports: 12, lastReport: 'Ca. 45 Min Wartezeit, PKW-Spur normal', photos: [] },
-  { id: 'hamzabeyli', name: 'Hamzabeyli', country: 'TR 🇹🇷 / BG 🇧🇬', status: 'green', reports: 3, lastReport: 'Sehr wenig los, schnell durchgekommen', photos: [] },
-  { id: 'ipsala', name: 'İpsala', country: 'TR 🇹🇷 / GR 🇬🇷', status: 'red', reports: 27, lastReport: 'Starkes Aufkommen! 2–3 Stunden Wartezeit', photos: [] },
-  { id: 'horgos', name: 'Horgoš', country: 'RS 🇷🇸 / HU 🇭🇺', status: 'yellow', reports: 8, lastReport: 'Normal, ca. 30 Min', photos: [] },
-  { id: 'kalotina', name: 'Kalotina', country: 'BG 🇧🇬 / RS 🇷🇸', status: 'green', reports: 5, lastReport: 'Wenig Betrieb heute Morgen', photos: [] },
-  { id: 'ruse', name: 'Ruse / Giurgiu', country: 'BG 🇧🇬 / RO 🇷🇴', status: 'yellow', reports: 6, lastReport: 'Brücke — ca. 40 Min Wartezeit', photos: [] },
-  { id: 'promachonas', name: 'Promachonas', country: 'BG 🇧🇬 / GR 🇬🇷', status: 'green', reports: 4, lastReport: 'Flüssig durchgekommen', photos: [] },
-  { id: 'tabanovce', name: 'Tabanovce', country: 'MK 🇲🇰 / RS 🇷🇸', status: 'green', reports: 2, lastReport: 'Wenig Verkehr', photos: [] },
+  { id: 'kapikule',    name: 'Kapıkule',        route: 'Balkan-Klassiker', flags: '🇹🇷 / 🇧🇬' },
+  { id: 'hamzabeyli', name: 'Hamzabeyli',       route: 'Balkan-Klassiker', flags: '🇹🇷 / 🇧🇬' },
+  { id: 'ipsala',     name: 'İpsala',           route: 'Griechenland',     flags: '🇹🇷 / 🇬🇷' },
+  { id: 'horgos',     name: 'Horgoš',           route: 'Balkan-Klassiker', flags: '🇷🇸 / 🇭🇺' },
+  { id: 'kalotina',   name: 'Kalotina',         route: 'Balkan-Klassiker', flags: '🇧🇬 / 🇷🇸' },
+  { id: 'gradina',    name: 'Gradinа / Lesovo', route: 'Balkan-Klassiker', flags: '🇧🇬 / 🇹🇷' },
+  { id: 'ruse',       name: 'Ruse / Giurgiu',   route: 'Rumänien',         flags: '🇧🇬 / 🇷🇴' },
+  { id: 'promachonas',name: 'Promachonas',      route: 'Griechenland',     flags: '🇧🇬 / 🇬🇷' },
+  { id: 'tabanovce',  name: 'Tabanovce',        route: 'Griechenland',     flags: '🇲🇰 / 🇷🇸' },
+  { id: 'bregana',    name: 'Bregana',          route: 'Kroatien',         flags: '🇸🇮 / 🇭🇷' },
+  { id: 'karawanken', name: 'Karawankentunnel', route: 'Kroatien',         flags: '🇦🇹 / 🇸🇮' },
 ]
 
-const STATUS_OPTIONS = [
-  { value: 'green', label: '🟢 Wenig Andrang', sub: '< 30 Min' },
-  { value: 'yellow', label: '🟡 Mittlere Wartezeit', sub: '30–90 Min' },
-  { value: 'red', label: '🔴 Stark belegt', sub: '> 90 Min' },
-]
+// Local state — in real app this would come from backend
+const DEFAULT_STATUS = {
+  kapikule: 'yellow', hamzabeyli: 'green', ipsala: 'red',
+  horgos: 'yellow', kalotina: 'green', gradina: 'green',
+  ruse: 'yellow', promachonas: 'green', tabanovce: 'green',
+  bregana: 'green', karawanken: 'green',
+}
+const DEFAULT_REPORTS = {
+  kapikule: 'Ca. 45 Min Wartezeit, PKW-Spur läuft normal',
+  hamzabeyli: 'Sehr wenig los, schnell durchgekommen',
+  ipsala: 'Starkes Aufkommen! 2–3 Stunden Wartezeit',
+  horgos: 'Normal, ca. 30 Min',
+  kalotina: 'Wenig Betrieb heute Morgen',
+  gradina: 'Flüssig, kaum Wartezeit',
+  ruse: 'Brücke — ca. 40 Min Wartezeit',
+  promachonas: 'Flüssig durchgekommen',
+  tabanovce: 'Wenig Verkehr',
+  bregana: 'Normale Wartezeit',
+  karawanken: 'Tunnel offen, kein Stau',
+}
 
-export default function BorderPage() {
-  const [borders, setBorders] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState(new Date())
-  const [reportModal, setReportModal] = useState(null)
-  const [reportText, setReportText] = useState('')
-  const [reportStatus, setReportStatus] = useState('yellow')
-  const [reportPhoto, setReportPhoto] = useState(null)
-  const [reportPhotoPreview, setReportPhotoPreview] = useState(null)
-  const [createModal, setCreateModal] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newCountry, setNewCountry] = useState('')
-  const [newStatus, setNewStatus] = useState('yellow')
-  const [newText, setNewText] = useState('')
-  const [countdown, setCountdown] = useState(30)
-  const fileInputRef = useRef(null)
+function StatusDot({ status, size = 8 }) {
+  const c = STATUS_COLOR[status] || '#888'
+  return <span style={{ width: size, height: size, borderRadius: '50%', background: c, boxShadow: `0 0 ${size}px ${c}`, display: 'inline-block', flexShrink: 0 }}/>
+}
 
-  const textMain = '#f5f5f5'
-  const textMuted = 'rgba(255,255,255,0.4)'
-  const borderColor = 'rgba(255,255,255,0.08)'
-
-  useEffect(() => {
-    setTimeout(() => { setBorders(BORDERS); setLoading(false) }, 400)
-  }, [])
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    setCountdown(30)
-    const tick = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          doRefresh(false)
-          return 30
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [])
-
-  function doRefresh(showLoading = true) {
-    if (showLoading) setLoading(true)
-    setTimeout(() => {
-      setBorders(prev => prev ? prev.map(b => ({ ...b, reports: b.reports + Math.floor(Math.random() * 2) })) : prev)
-      if (showLoading) setLoading(false)
-      setLastUpdate(new Date())
-    }, showLoading ? 700 : 0)
-  }
-
-  function openReport(border) {
-    setReportModal(border)
-    setReportText('')
-    setReportStatus('yellow')
-    setReportPhoto(null)
-    setReportPhotoPreview(null)
-  }
-
-  function handlePhotoChange(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setReportPhoto(file)
-    setReportPhotoPreview(URL.createObjectURL(file))
-  }
-
-  function submitReport() {
-    if (!reportText.trim() && !reportPhoto) return
-    const text = reportText.trim() || '📷 Foto gesendet'
-    setBorders(prev => prev.map(b =>
-      b.id === reportModal.id
-        ? { ...b, status: reportStatus, reports: b.reports + 1, lastReport: text, photos: reportPhotoPreview ? [...b.photos, reportPhotoPreview] : b.photos }
-        : b
-    ))
-    setReportModal(null)
-  }
-
-  function submitCreate() {
-    if (!newName.trim()) return
-    const id = newName.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now()
-    setBorders(prev => [...(prev || []), {
-      id, name: newName.trim(), country: newCountry.trim() || '— / —',
-      status: newStatus, reports: 1, lastReport: newText.trim() || 'Neue Meldung', photos: [],
-    }])
-    setCreateModal(false)
-    setNewName(''); setNewCountry(''); setNewText(''); setNewStatus('yellow')
-  }
-
-  const summary = borders ? getSummary(borders) : null
-
+function BorderCard({ border, onReport }) {
+  const c = STATUS_COLOR[border.status] || '#888'
   return (
-    <div className="page-container" style={{ background: 'linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%)' }}>
-
-      <div className="px-4 pt-6 pb-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-2xl font-black" style={{ color: textMain }}>Live Grenze</h1>
-          <div className="flex items-center gap-2">
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => doRefresh(true)}
-              className="w-9 h-9 rounded-2xl flex items-center justify-center" style={glass}>
-              <RefreshCw size={15} style={{ color: textMuted }} />
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCreateModal(true)}
-              className="w-9 h-9 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(12px)' }}>
-              <Plus size={16} style={{ color: textMain }} />
-            </motion.button>
+    <div style={{
+      ...glass,
+      border: `1px solid ${c}22`,
+      padding: '14px 16px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+            <StatusDot status={border.status}/>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>{border.name}</span>
+            <span style={{ fontSize: 13 }}>{border.flags}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: c, letterSpacing: 0.4, textTransform: 'uppercase',
+              padding: '3px 8px', borderRadius: 999, background: `${c}18`, border: `1px solid ${c}33` }}>
+              {STATUS_LABEL[border.status]}
+            </span>
+            <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{STATUS_TIME[border.status]}</span>
+            <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>· {border.route}</span>
           </div>
         </div>
-
-        {/* Auto-refresh indicator */}
-        <div className="flex items-center gap-2 mb-4">
-          <Clock size={11} style={{ color: textMuted }} />
-          <p className="text-xs" style={{ color: textMuted }}>
-            {lastUpdate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} · Auto-Refresh in {countdown}s
-          </p>
-          <div className="flex-1 h-px rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <div className="h-full rounded-full" style={{ width: `${((30 - countdown) / 30) * 100}%`, background: 'rgba(255,255,255,0.2)', transition: 'width 1s linear' }} />
-          </div>
-        </div>
-
-        {/* Summary */}
-        {summary && !loading && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl p-3.5 mb-4 text-sm" style={glass}>
-            <div className="text-xs font-bold mb-1 tracking-widest" style={{ color: textMuted }}>AKTUELLE LAGE</div>
-            <div style={{ color: textMain }}>{summary}</div>
-          </motion.div>
-        )}
-
-        {/* Legend */}
-        <div className="flex gap-4 mb-5">
-          {[['#4ade80', 'Frei < 30 Min'], ['#fbbf24', 'Mittel 30–90 Min'], ['#f87171', 'Voll > 90 Min']].map(([color, label]) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-              <span className="text-[10px]" style={{ color: textMuted }}>{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {loading ? <SkeletonList count={4} /> : (
-          <div className="flex flex-col gap-3">
-            {borders.map((b, i) => (
-              <motion.div key={b.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                <BorderCard border={b} onReport={() => openReport(b)} />
-              </motion.div>
-            ))}
-          </div>
-        )}
+        <button onClick={() => onReport(border)} style={{
+          padding: '7px 14px', borderRadius: 12, flexShrink: 0,
+          background: 'rgba(245,181,68,0.12)', border: '1px solid rgba(245,181,68,0.3)',
+          color: 'var(--turkis)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          fontFamily: 'var(--font-body)',
+        }}>+ Melden</button>
       </div>
-
-      {/* Report Modal */}
-      <AnimatePresence>
-        {reportModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)' }}
-            onClick={e => e.target === e.currentTarget && setReportModal(null)}>
-            <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
-              className="w-full max-w-sm rounded-3xl p-5" style={glass}>
-
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <div className="font-bold" style={{ color: textMain }}>Meldung: {reportModal.name}</div>
-                  <div className="text-xs mt-0.5" style={{ color: textMuted }}>Was siehst du gerade?</div>
-                </div>
-                <button onClick={() => setReportModal(null)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.07)' }}>
-                  <X size={14} style={{ color: textMuted }} />
-                </button>
-              </div>
-
-              {/* Status auswählen */}
-              <div className="text-xs font-bold mb-2 tracking-widest" style={{ color: textMuted }}>STATUS WÄHLEN</div>
-              <div className="flex flex-col gap-2 mb-4">
-                {STATUS_OPTIONS.map(s => (
-                  <button key={s.value} onClick={() => setReportStatus(s.value)}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm text-left"
-                    style={{
-                      background: reportStatus === s.value ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${reportStatus === s.value ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)'}`,
-                      color: textMain,
-                    }}>
-                    <span>{s.label}</span>
-                    <span style={{ color: textMuted, fontSize: 11 }}>{s.sub}</span>
-                  </button>
-                ))}
-              </div>
-
-              <textarea value={reportText} onChange={e => setReportText(e.target.value)}
-                placeholder="Wartezeit, Spur-Infos, Besonderheiten..."
-                rows={3} className="w-full rounded-2xl p-3 text-sm mb-3 resize-none outline-none"
-                style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }} />
-
-              {reportPhotoPreview && (
-                <div className="relative mb-3">
-                  <img src={reportPhotoPreview} alt="Vorschau" className="w-full rounded-2xl object-cover" style={{ maxHeight: 140 }} />
-                  <button onClick={() => { setReportPhoto(null); setReportPhotoPreview(null) }}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(0,0,0,0.7)' }}>
-                    <X size={12} style={{ color: 'white' }} />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => fileInputRef.current?.click()}
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.2)' }}>
-                  <Camera size={16} style={{ color: '#60a5fa' }} />
-                </motion.button>
-                <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
-                <motion.button whileTap={{ scale: 0.97 }} onClick={submitReport}
-                  disabled={!reportText.trim() && !reportPhoto}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl font-bold text-sm h-11"
-                  style={{
-                    background: (reportText.trim() || reportPhoto) ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: (reportText.trim() || reportPhoto) ? textMain : textMuted,
-                    opacity: (!reportText.trim() && !reportPhoto) ? 0.5 : 1,
-                  }}>
-                  <Send size={14} /> Senden
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Create New Border Modal */}
-      <AnimatePresence>
-        {createModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)' }}
-            onClick={e => e.target === e.currentTarget && setCreateModal(false)}>
-            <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
-              className="w-full max-w-sm rounded-3xl p-5" style={glass}>
-
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <div className="font-bold" style={{ color: textMain }}>Grenze hinzufügen</div>
-                  <div className="text-xs mt-0.5" style={{ color: textMuted }}>Neue Meldung erstellen</div>
-                </div>
-                <button onClick={() => setCreateModal(false)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.07)' }}>
-                  <X size={14} style={{ color: textMuted }} />
-                </button>
-              </div>
-
-              <div className="mb-3">
-                <label className="text-xs font-bold tracking-widest block mb-1.5" style={{ color: textMuted }}>GRENZNAME</label>
-                <input value={newName} onChange={e => setNewName(e.target.value)}
-                  placeholder="z.B. Kapıkule, Horgoš..."
-                  className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
-              </div>
-
-              <div className="mb-3">
-                <label className="text-xs font-bold tracking-widest block mb-1.5" style={{ color: textMuted }}>LÄNDER</label>
-                <input value={newCountry} onChange={e => setNewCountry(e.target.value)}
-                  placeholder="z.B. TR 🇹🇷 / BG 🇧🇬"
-                  className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
-              </div>
-
-              <div className="text-xs font-bold mb-2 tracking-widest" style={{ color: textMuted }}>AKTUELLER STATUS</div>
-              <div className="flex flex-col gap-2 mb-3">
-                {STATUS_OPTIONS.map(s => (
-                  <button key={s.value} onClick={() => setNewStatus(s.value)}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-2xl text-sm text-left"
-                    style={{
-                      background: newStatus === s.value ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${newStatus === s.value ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)'}`,
-                      color: textMain,
-                    }}>
-                    <span>{s.label}</span>
-                    <span style={{ color: textMuted, fontSize: 11 }}>{s.sub}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mb-4">
-                <label className="text-xs font-bold tracking-widest block mb-1.5" style={{ color: textMuted }}>BESCHREIBUNG</label>
-                <textarea value={newText} onChange={e => setNewText(e.target.value)}
-                  placeholder="Was siehst du gerade an der Grenze?"
-                  rows={2} className="w-full rounded-2xl p-3 text-sm resize-none outline-none"
-                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', color: textMain }} />
-              </div>
-
-              <motion.button whileTap={{ scale: 0.97 }} onClick={submitCreate}
-                disabled={!newName.trim()}
-                className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2"
-                style={{
-                  background: newName.trim() ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: newName.trim() ? textMain : textMuted,
-                  opacity: !newName.trim() ? 0.5 : 1,
-                }}>
-                <Plus size={15} /> Grenze hinzufügen
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {border.lastReport && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.5,
+        }}>
+          "{border.lastReport}"
+        </div>
+      )}
+      {border.reportCount > 0 && (
+        <div style={{ marginTop: 8, color: 'var(--fg-3)', fontSize: 11 }}>
+          {border.reportCount} Community-Meldung{border.reportCount !== 1 ? 'en' : ''} heute
+        </div>
+      )}
     </div>
   )
 }
 
-function getSummary(borders) {
-  const red = borders.filter(b => b.status === 'red')
-  const green = borders.filter(b => b.status === 'green')
-  if (red.length > 0) return `⚠️ ${red.map(b => b.name).join(', ')} aktuell stark belegt.${green.length > 0 ? ` ${green[0].name} empfohlen.` : ''}`
-  return `✅ Alle Grenzen im normalen Bereich. ${green.map(b => b.name).slice(0, 2).join(', ')} laufen gut.`
+const STATUS_OPTS = [
+  { value: 'green',  label: '🟢 Wenig Andrang',       sub: '< 30 Min' },
+  { value: 'yellow', label: '🟡 Mittlere Wartezeit',   sub: '30–90 Min' },
+  { value: 'red',    label: '🔴 Stark belegt',          sub: '> 90 Min' },
+]
+
+export default function BorderPage() {
+  const { user } = useStore()
+  const [borders, setBorders] = useState(
+    BORDERS.map(b => ({ ...b, status: DEFAULT_STATUS[b.id] || 'green', lastReport: DEFAULT_REPORTS[b.id] || '', reportCount: 0 }))
+  )
+  const [reportModal, setReportModal] = useState(null)
+  const [reportText, setReportText] = useState('')
+  const [reportStatus, setReportStatus] = useState('yellow')
+  const [sending, setSending] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState(Date.now())
+  const [filter, setFilter] = useState('Alle')
+
+  // Load community reports for borders
+  useEffect(() => {
+    async function loadReports() {
+      try {
+        const r = await fetch(`${API}/api/community/posts?room=Grenze`)
+        const d = await r.json()
+        if (!d?.posts?.length) return
+        // Count recent posts per border name
+        const counts = {}
+        const latestText = {}
+        const latestStatus = {}
+        for (const post of d.posts) {
+          const text = (post.text || '').toLowerCase()
+          for (const b of BORDERS) {
+            if (text.includes(b.name.toLowerCase()) || text.includes(b.id)) {
+              counts[b.id] = (counts[b.id] || 0) + 1
+              if (!latestText[b.id]) latestText[b.id] = post.text
+              // Detect status from keywords
+              if (!latestStatus[b.id]) {
+                if (text.includes('stau') || text.includes('lang') || text.includes('2h') || text.includes('3h')) latestStatus[b.id] = 'red'
+                else if (text.includes('warte') || text.includes('1h')) latestStatus[b.id] = 'yellow'
+                else if (text.includes('frei') || text.includes('schnell') || text.includes('wenig')) latestStatus[b.id] = 'green'
+              }
+            }
+          }
+        }
+        setBorders(prev => prev.map(b => ({
+          ...b,
+          reportCount: counts[b.id] || b.reportCount,
+          lastReport: latestText[b.id] || b.lastReport,
+          status: latestStatus[b.id] || b.status,
+        })))
+        setLastUpdate(Date.now())
+      } catch {}
+    }
+    loadReports()
+  }, [])
+
+  async function submitReport() {
+    if (!reportText.trim()) return
+    setSending(true)
+    try {
+      await fetch(`${API}/api/community/posts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author: user?.displayName || user?.email?.split('@')[0] || 'Reisender',
+          text: `${reportModal.name}: ${reportText.trim()}`,
+          room: 'Grenze',
+          tag: 'Grenze',
+          avatarColor: '#FF8A3D',
+          country: reportModal.flags,
+        }),
+      })
+      setBorders(prev => prev.map(b =>
+        b.id === reportModal.id
+          ? { ...b, status: reportStatus, lastReport: reportText.trim(), reportCount: (b.reportCount || 0) + 1 }
+          : b
+      ))
+      setReportModal(null)
+      setReportText('')
+    } catch {}
+    setSending(false)
+  }
+
+  const routes = ['Alle', ...new Set(BORDERS.map(b => b.route))]
+  const filtered = filter === 'Alle' ? borders : borders.filter(b => b.route === filter)
+
+  const redCount = borders.filter(b => b.status === 'red').length
+  const yellowCount = borders.filter(b => b.status === 'yellow').length
+
+  const mins = Math.floor((Date.now() - lastUpdate) / 60000)
+
+  return (
+    <div style={{ minHeight: '100%', padding: '0 16px', paddingBottom: 110, position: 'relative' }}>
+
+      {/* Aurora */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `
+          radial-gradient(40% 25% at 10% 5%, rgba(255,138,61,0.10), transparent 60%),
+          radial-gradient(35% 20% at 88% 18%, rgba(232,84,168,0.10), transparent 60%)
+        `,
+      }}/>
+
+      {/* Header */}
+      <div style={{ position: 'relative', paddingTop: 52, paddingBottom: 16 }}>
+        <div style={{ color: 'var(--fg-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+          Live · Community-Meldungen
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: -0.6 }}>
+          Grenz<span style={{ color: 'var(--orange)' }}>status</span>
+        </div>
+      </div>
+
+      {/* Summary banner */}
+      <div style={{
+        ...glass,
+        padding: '12px 16px', marginBottom: 16,
+        background: redCount > 0 ? 'rgba(232,84,168,0.06)' : 'rgba(56,229,138,0.05)',
+        border: redCount > 0 ? '1px solid rgba(232,84,168,0.2)' : '1px solid rgba(56,229,138,0.2)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            {redCount > 0
+              ? <span style={{ fontWeight: 700, fontSize: 14 }}>⚠️ {redCount} Grenze{redCount > 1 ? 'n' : ''} stark belegt</span>
+              : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--gruen)' }}>✅ Alle Grenzen im normalen Bereich</span>
+            }
+            {yellowCount > 0 && <span style={{ color: 'var(--fg-3)', fontSize: 12 }}> · {yellowCount} mit mittlerer Wartezeit</span>}
+          </div>
+          <span style={{ color: 'var(--fg-3)', fontSize: 11, flexShrink: 0 }}>
+            {mins === 0 ? 'Gerade aktualisiert' : `Vor ${mins} Min.`}
+          </span>
+        </div>
+      </div>
+
+      {/* Legende */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 14, paddingLeft: 2 }}>
+        {[['green','#38E58A','< 30 Min'], ['yellow','#F5B544','30–90 Min'], ['red','#E854A8','> 90 Min']].map(([, c, label]) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, display: 'inline-block' }}/>
+            <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Route filter tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {routes.map(r => (
+          <button key={r} onClick={() => setFilter(r)} style={{
+            flexShrink: 0, padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
+            background: filter === r ? 'rgba(255,138,61,0.15)' : 'rgba(255,255,255,0.04)',
+            color: filter === r ? 'var(--orange)' : 'var(--fg-3)',
+            border: filter === r ? '1px solid rgba(255,138,61,0.35)' : '1px solid rgba(255,255,255,0.08)',
+            fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)',
+          }}>{r}</button>
+        ))}
+      </div>
+
+      {/* Border cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {filtered.map(b => (
+          <BorderCard key={b.id} border={b} onReport={b2 => { setReportModal(b2); setReportStatus(b2.status); setReportText('') }}/>
+        ))}
+      </div>
+
+      {/* Report Modal */}
+      {reportModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 0 20px',
+        }} onClick={e => e.target === e.currentTarget && setReportModal(null)}>
+          <div style={{
+            width: '100%', maxWidth: 480,
+            background: '#0F1318', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '24px 24px 0 0', padding: '20px 20px 32px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17 }}>Meldung: {reportModal.name}</div>
+                <div style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 2 }}>{reportModal.flags} · Was siehst du gerade?</div>
+              </div>
+              <button onClick={() => setReportModal(null)} style={{
+                width: 32, height: 32, borderRadius: 10,
+                background: 'rgba(255,255,255,0.07)', border: 'none',
+                color: 'var(--fg-3)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>✕</button>
+            </div>
+
+            {/* Status wählen */}
+            <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--fg-3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>Status wählen</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {STATUS_OPTS.map(s => (
+                <button key={s.value} onClick={() => setReportStatus(s.value)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                  background: reportStatus === s.value ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: reportStatus === s.value ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.07)',
+                  color: 'var(--fg)', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)',
+                }}>
+                  <span>{s.label}</span>
+                  <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{s.sub}</span>
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={reportText}
+              onChange={e => setReportText(e.target.value)}
+              placeholder="Wartezeit, Spur-Infos, Besonderheiten…"
+              rows={3}
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14,
+                padding: '10px 12px', color: 'var(--fg)', fontSize: 14,
+                outline: 'none', resize: 'none', fontFamily: 'var(--font-body)',
+                lineHeight: 1.5, boxSizing: 'border-box', marginBottom: 12,
+              }}
+            />
+
+            {!user && (
+              <div style={{ color: 'var(--orange)', fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
+                Anmeldung erforderlich um Meldungen zu senden
+              </div>
+            )}
+
+            <button
+              onClick={submitReport}
+              disabled={sending || !reportText.trim() || !user}
+              style={{
+                width: '100%', padding: '13px 0', borderRadius: 14, border: 'none',
+                background: sending || !reportText.trim() || !user ? 'rgba(245,181,68,0.3)' : 'linear-gradient(180deg, #FFCC5C, #D49628)',
+                color: sending || !reportText.trim() || !user ? 'rgba(31,20,2,0.4)' : '#1F1402',
+                fontWeight: 800, fontSize: 14, cursor: sending || !reportText.trim() || !user ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {sending ? 'Wird gesendet…' : 'Meldung senden'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
