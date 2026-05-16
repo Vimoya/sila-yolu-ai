@@ -38,33 +38,32 @@ export default function RoutePage() {
 
   const glass = {
     background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    backdropFilter: 'blur(28px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+    borderRadius: 22,
   }
   const glassStrong = {
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.14)',
-    backdropFilter: 'blur(24px) saturate(200%)',
-    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    backdropFilter: 'blur(28px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+    borderRadius: 22,
   }
   const cardBg = 'rgba(255,255,255,0.04)'
-  const border = 'rgba(255,255,255,0.1)'
-  const textMuted = 'rgba(255,255,255,0.4)'
-  const textMain = '#f5f5f5'
+  const border = 'rgba(255,255,255,0.08)'
+  const textMuted = '#7A8090'
+  const textMain = '#F2F4F8'
   const inputStyle = {
-    background: 'rgba(255,255,255,0.09)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: 14,
     color: textMain,
     padding: '13px 16px',
     fontSize: 14,
     width: '100%',
     outline: 'none',
-    backdropFilter: 'blur(8px)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+    fontFamily: 'DM Sans, sans-serif',
   }
 
   useEffect(() => {
@@ -207,10 +206,12 @@ export default function RoutePage() {
   const selectedResult = result?.routes?.find(r => r.key === selectedKey)
 
   return (
-    <div className="page-container" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d0d18 40%, #080810 100%)' }}>
+    <div style={{ minHeight: '100%', paddingBottom: 24 }}>
       <div className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-black mb-1" style={{ color: textMain }}>Route berechnen</h1>
-        <p className="text-sm mb-4" style={{ color: textMuted }}>Von Europa bis zur Türkei — mit KI</p>
+        <h1 className="text-2xl font-black mb-1" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>
+          Route nach <span style={{ color: '#FF8A3D' }}>Türkei</span>
+        </h1>
+        <p className="text-sm mb-4" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>Türkiye yolu</p>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           {/* Form card */}
@@ -323,7 +324,7 @@ export default function RoutePage() {
               </label>
               <input type="range" min={1.0} max={2.5} step={0.05} value={fuelPrice}
                 onChange={e => setRouteSettings({ fuelPrice: +e.target.value })}
-                className="w-full" style={{ accentColor: 'rgba(255,255,255,0.6)' }} />
+                className="w-full" style={{ accentColor: '#F5B544' }} />
               <div className="flex justify-between text-xs mt-1" style={{ color: textMuted }}>
                 <span>1.00 €</span><span>2.50 €</span>
               </div>
@@ -347,12 +348,13 @@ export default function RoutePage() {
             )}
 
             <motion.button whileTap={{ scale: 0.97 }} onClick={calculate} disabled={calculating}
-              className="w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-[18px] font-black text-sm flex items-center justify-center gap-2"
               style={{
-                background: 'rgba(255,255,255,0.1)',
-                color: textMain,
-                border: `1px solid rgba(255,255,255,0.18)`,
-                backdropFilter: 'blur(8px)',
+                background: calculating ? 'rgba(255,255,255,0.06)' : 'linear-gradient(180deg, #FFCC5C, #D49628)',
+                color: calculating ? textMuted : '#0A0C10',
+                border: calculating ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                boxShadow: calculating ? 'none' : '0 4px 20px rgba(245,181,68,0.35)',
+                fontFamily: 'Space Grotesk, sans-serif',
                 opacity: calculating ? 0.6 : 1,
               }}>
               {calculating
@@ -370,20 +372,20 @@ export default function RoutePage() {
                 {selectedResult && (
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     {[
-                      { icon: Navigation, label: 'Distanz', value: `${selectedResult.km.toLocaleString()} km` },
-                      { icon: Clock, label: 'Fahrzeit', value: `~${selectedResult.hours}h` },
-                      { icon: Fuel, label: 'Spritkosten', value: `${selectedResult.fuelCost} €` },
-                      { icon: Euro, label: 'Gesamt', value: `${selectedResult.total} €` },
+                      { icon: Navigation, label: 'Distanz', value: `${selectedResult.km.toLocaleString()} km`, color: '#F5B544' },
+                      { icon: Clock, label: 'Fahrzeit', value: `~${selectedResult.hours}h`, color: '#4DA8FF' },
+                      { icon: Fuel, label: 'Spritkosten', value: `${selectedResult.fuelCost} €`, color: '#38E58A' },
+                      { icon: Euro, label: 'Gesamt', value: `${selectedResult.total} €`, color: '#FF8A3D' },
                     ].map((s, i) => (
-                      <div key={i} className="rounded-2xl p-3 flex items-center gap-2.5"
+                      <div key={i} className="p-3 flex items-center gap-2.5"
                         style={glass}>
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(255,255,255,0.07)' }}>
-                          <s.icon size={15} style={{ color: 'rgba(255,255,255,0.6)' }} />
+                        <div className="w-8 h-8 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                          <s.icon size={15} style={{ color: s.color }} />
                         </div>
                         <div>
-                          <div className="font-black text-sm" style={{ color: textMain }}>{s.value}</div>
-                          <div className="text-xs" style={{ color: textMuted }}>{s.label}</div>
+                          <div className="sy-pump text-sm" style={{ color: s.color }}>{s.value}</div>
+                          <div className="text-xs" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>{s.label}</div>
                         </div>
                       </div>
                     ))}
@@ -537,19 +539,19 @@ export default function RoutePage() {
                     const isSelected = selectedKey === r.key
                     return (
                       <motion.div key={r.key} whileTap={{ scale: 0.98 }} onClick={() => selectRoute(r.key)}
-                        className="rounded-2xl p-4 cursor-pointer"
+                        className="p-4 cursor-pointer"
                         style={isSelected ? {
-                          background: 'rgba(255,255,255,0.1)',
-                          border: '1px solid rgba(255,255,255,0.22)',
-                          backdropFilter: 'blur(24px) saturate(200%)',
-                          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
+                          background: 'rgba(245,181,68,0.08)',
+                          border: '1px solid rgba(245,181,68,0.25)',
+                          backdropFilter: 'blur(28px) saturate(140%)',
+                          WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+                          borderRadius: 22,
                         } : glass}>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-sm" style={{ color: textMain }}>{r.name}</span>
+                          <span className="font-bold text-sm" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>{r.name}</span>
                           {r.recommended && (
                             <span className="text-xs px-2 py-1 rounded-full font-bold"
-                              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>✓ Empfohlen</span>
+                              style={{ background: 'rgba(245,181,68,0.14)', color: '#F5B544', border: '1px solid rgba(245,181,68,0.25)', fontFamily: 'DM Sans, sans-serif' }}>✓ Empfohlen</span>
                           )}
                         </div>
                         <div className="flex items-center flex-wrap gap-0.5 text-base mb-2">
@@ -564,10 +566,10 @@ export default function RoutePage() {
                             { label: 'Sprit', val: `${r.fuelCost}€` },
                             { label: 'Gesamt', val: `${r.total}€` },
                           ].map((s, si) => (
-                            <div key={si} className="rounded-xl p-1.5 text-center"
-                              style={{ background: 'rgba(255,255,255,0.09)' }}>
-                              <div className="font-black text-xs" style={{ color: textMain }}>{s.val}</div>
-                              <div className="text-[9px] mt-0.5" style={{ color: textMuted }}>{s.label}</div>
+                            <div key={si} className="rounded-[10px] p-1.5 text-center"
+                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <div className="sy-pump text-xs" style={{ color: textMain }}>{s.val}</div>
+                              <div className="text-[9px] mt-0.5" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>{s.label}</div>
                             </div>
                           ))}
                         </div>
@@ -583,8 +585,8 @@ export default function RoutePage() {
                 {selectedResult && (
                   <a href={`https://www.google.com/maps/dir/${encodeURIComponent(start)}/${selectedResult.countries.slice(1, -1).map(c => encodeURIComponent(c)).join('/')}/${encodeURIComponent(dest + ', Türkei')}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm"
-                    style={{ background: 'rgba(255,255,255,0.07)', color: textMain, border: `1px solid ${border}`, textDecoration: 'none' }}>
+                    className="flex items-center justify-center gap-2 w-full py-3.5 font-bold text-sm"
+                    style={{ background: 'rgba(77,168,255,0.10)', color: '#4DA8FF', border: '1px solid rgba(77,168,255,0.20)', borderRadius: 18, textDecoration: 'none', fontFamily: 'DM Sans, sans-serif' }}>
                     <Map size={16} /> In Google Maps öffnen
                   </a>
                 )}

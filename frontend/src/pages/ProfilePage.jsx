@@ -6,11 +6,11 @@ import { auth } from '../firebase/config'
 import { signOut } from 'firebase/auth'
 
 const glass = {
-  background: 'rgba(255,255,255,0.09)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  backdropFilter: 'blur(20px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-  boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  backdropFilter: 'blur(28px) saturate(140%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+  borderRadius: 22,
 }
 
 const CHECKLIST_CATEGORIES = [
@@ -146,18 +146,19 @@ export default function ProfilePage() {
   const [activeSection, setActiveSection] = useState('checklist')
   const [saved, setSaved] = useState(false)
 
-  const textMain = '#f5f5f5'
-  const textMuted = 'rgba(255,255,255,0.4)'
-  const border = 'rgba(255,255,255,0.09)'
+  const textMain = '#F2F4F8'
+  const textMuted = '#7A8090'
+  const border = 'rgba(255,255,255,0.07)'
   const inputStyle = {
-    background: 'rgba(255,255,255,0.09)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 14,
     color: textMain,
     padding: '11px 14px',
     fontSize: 14,
     width: '100%',
     outline: 'none',
+    fontFamily: 'DM Sans, sans-serif',
   }
 
   const totalItems = CHECKLIST_CATEGORIES.flatMap(c => c.items).length
@@ -175,55 +176,63 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="page-container" style={{ background: 'linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%)' }}>
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        <div style={{ position: 'absolute', top: '-10%', left: '30%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(100,60,255,0.05) 0%, transparent 60%)' }} />
-      </div>
-
+    <div style={{ minHeight: '100%', paddingBottom: 24 }}>
       <div className="relative z-10 px-4 pt-6 pb-24">
 
-        {/* Profile Header — pure glass, no colors */}
+        {/* Profile Header */}
         <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl p-5 mb-4 text-center relative overflow-hidden" style={glass}>
+          className="p-5 mb-4 text-center relative overflow-hidden" style={glass}>
           <div className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(245,181,68,0.30), transparent)' }} />
 
-          <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            {user?.photoURL
-              ? <img src={user.photoURL} className="w-full h-full object-cover" alt="avatar" />
-              : <User size={26} style={{ color: 'rgba(255,255,255,0.4)' }} />}
+          {/* Avatar */}
+          <div className="relative w-20 h-20 mx-auto mb-3">
+            <div className="w-20 h-20 rounded-[24px] flex items-center justify-center overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #F5B544, #D49628)', boxShadow: '0 0 32px rgba(245,181,68,0.30)' }}>
+              {user?.photoURL
+                ? <img src={user.photoURL} className="w-full h-full object-cover" alt="avatar" />
+                : <span className="text-2xl font-black" style={{ color: '#0A0C10', fontFamily: 'Space Grotesk, sans-serif' }}>
+                    {(user?.displayName || 'GS').slice(0, 2).toUpperCase()}
+                  </span>}
+            </div>
           </div>
 
-          <div className="font-black text-lg mb-0.5" style={{ color: textMain }}>
+          <div className="font-black text-lg mb-0.5" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>
             {user?.displayName || 'Gast'}
           </div>
-          <div className="text-sm mb-3" style={{ color: textMuted }}>
+          <div className="text-sm mb-3" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>
             {user?.email || 'Gast-Modus'}
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <Star size={11} style={{ color: 'rgba(255,255,255,0.5)' }} />
-            <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>Free Plan</span>
+          <div className="flex items-center justify-center gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{ background: 'rgba(245,181,68,0.14)', border: '1px solid rgba(245,181,68,0.25)' }}>
+              <Star size={11} style={{ color: '#F5B544' }} />
+              <span className="text-xs font-semibold" style={{ color: '#F5B544', fontFamily: 'DM Sans, sans-serif' }}>PRO REISE</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{ background: 'rgba(255,138,61,0.14)', border: '1px solid rgba(255,138,61,0.25)' }}>
+              <span className="text-xs font-semibold" style={{ color: '#FF8A3D', fontFamily: 'DM Sans, sans-serif' }}>3 Trips</span>
+            </div>
           </div>
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex gap-1.5 mb-5 p-1 rounded-2xl"
+        <div className="flex gap-1.5 mb-5 p-1 rounded-[20px]"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
           {TABS.map(tab => (
             <motion.button key={tab.id} whileTap={{ scale: 0.97 }} onClick={() => setActiveSection(tab.id)}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold"
+              className="flex-1 py-2 rounded-[14px] text-xs font-semibold"
               style={activeSection === tab.id ? {
-                background: 'rgba(255,255,255,0.09)',
-                color: textMain,
-                border: '1px solid rgba(255,255,255,0.13)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                background: 'rgba(245,181,68,0.14)',
+                color: '#F5B544',
+                border: '1px solid rgba(245,181,68,0.25)',
+                fontFamily: 'DM Sans, sans-serif',
               } : {
                 background: 'transparent',
                 color: textMuted,
                 border: '1px solid transparent',
+                fontFamily: 'DM Sans, sans-serif',
               }}>
               {tab.label}
             </motion.button>
@@ -239,13 +248,13 @@ export default function ProfilePage() {
               <div className="rounded-2xl p-4 mb-4" style={glass}>
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-semibold text-sm" style={{ color: textMain }}>Reise-Checkliste</span>
-                  <span className="font-black text-sm" style={{ color: progress === 100 ? '#4ade80' : 'rgba(255,255,255,0.6)' }}>
+                  <span className="sy-pump text-sm" style={{ color: progress === 100 ? '#38E58A' : '#F5B544' }}>
                     {progress}%
                   </span>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div className="h-2 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(255,255,255,0.05)' }}>
                   <motion.div className="h-full rounded-full"
-                    style={{ background: progress === 100 ? 'linear-gradient(90deg, #4ade80, #22c55e)' : 'linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.2))' }}
+                    style={{ background: progress === 100 ? 'linear-gradient(90deg, #38E58A, #22c55e)' : 'linear-gradient(90deg, #F5B544, rgba(245,181,68,0.3))' }}
                     animate={{ width: `${progress}%` }} transition={{ duration: 0.6 }} />
                 </div>
                 <div className="text-xs" style={{ color: textMuted }}>{checkedItems} von {totalItems} erledigt</div>
@@ -270,13 +279,13 @@ export default function ProfilePage() {
                           style={{ borderBottom: i < cat.items.length - 1 ? `1px solid ${border}` : 'none' }}>
                           <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
                             style={checked ? {
-                              background: 'rgba(74,222,128,0.15)',
-                              border: '1px solid rgba(74,222,128,0.35)',
+                              background: 'rgba(56,229,138,0.14)',
+                              border: '1px solid rgba(56,229,138,0.30)',
                             } : {
                               background: 'rgba(255,255,255,0.04)',
-                              border: '1px solid rgba(255,255,255,0.14)',
+                              border: '1px solid rgba(255,255,255,0.08)',
                             }}>
-                            {checked && <Check size={11} style={{ color: '#4ade80' }} strokeWidth={3} />}
+                            {checked && <Check size={11} style={{ color: '#38E58A' }} strokeWidth={3} />}
                           </div>
                           <span className="text-sm leading-snug flex-1"
                             style={{ color: checked ? textMuted : textMain, textDecoration: checked ? 'line-through' : 'none' }}>
@@ -305,14 +314,17 @@ export default function ProfilePage() {
                         <button key={f} onClick={() => setRouteSettings({ fuel: f })}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize"
                           style={routeSettings.fuel === f ? {
-                            background: 'rgba(255,255,255,0.1)',
-                            border: '1px solid rgba(255,255,255,0.18)',
-                            color: textMain,
-                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+                            background: 'rgba(245,181,68,0.14)',
+                            border: '1px solid rgba(245,181,68,0.25)',
+                            color: '#F5B544',
+                            borderRadius: 14,
+                            fontFamily: 'DM Sans, sans-serif',
                           } : {
                             background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            border: '1px solid rgba(255,255,255,0.07)',
                             color: textMuted,
+                            borderRadius: 14,
+                            fontFamily: 'DM Sans, sans-serif',
                           }}>
                           {f === 'diesel' ? '⛽ Diesel' : '⛽ Benzin'}
                         </button>
@@ -327,7 +339,7 @@ export default function ProfilePage() {
                     </label>
                     <input type="range" min={4} max={20} step={0.5} value={routeSettings.consumption}
                       onChange={e => setRouteSettings({ consumption: +e.target.value })}
-                      className="w-full" style={{ accentColor: 'rgba(255,255,255,0.5)' }} />
+                      className="w-full" style={{ accentColor: '#F5B544' }} />
                     <div className="flex justify-between text-xs mt-1" style={{ color: textMuted }}>
                       <span>4 L</span><span>20 L</span>
                     </div>
@@ -355,7 +367,7 @@ export default function ProfilePage() {
                     </label>
                     <input type="range" min={1.0} max={2.5} step={0.05} value={routeSettings.fuelPrice}
                       onChange={e => setRouteSettings({ fuelPrice: +e.target.value })}
-                      className="w-full" style={{ accentColor: 'rgba(255,255,255,0.5)' }} />
+                      className="w-full" style={{ accentColor: '#F5B544' }} />
                     <div className="flex justify-between text-xs mt-1" style={{ color: textMuted }}>
                       <span>1,00 €</span><span>2,50 €</span>
                     </div>
@@ -364,11 +376,13 @@ export default function ProfilePage() {
               </div>
 
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleSaveVehicle}
-                className="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-[18px] font-bold text-sm flex items-center justify-center gap-2"
                 style={{
-                  background: saved ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.08)',
-                  border: saved ? '1px solid rgba(74,222,128,0.25)' : '1px solid rgba(255,255,255,0.14)',
-                  color: saved ? '#4ade80' : textMain,
+                  background: saved ? 'rgba(56,229,138,0.12)' : 'linear-gradient(180deg, #FFCC5C, #D49628)',
+                  border: saved ? '1px solid rgba(56,229,138,0.25)' : 'none',
+                  color: saved ? '#38E58A' : '#0A0C10',
+                  boxShadow: saved ? 'none' : '0 4px 16px rgba(245,181,68,0.30)',
+                  fontFamily: 'DM Sans, sans-serif',
                 }}>
                 {saved ? <><Check size={15} /> Gespeichert</> : <><Save size={15} /> Speichern</>}
               </motion.button>
@@ -424,19 +438,20 @@ export default function ProfilePage() {
 
               {/* Premium */}
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-                className="rounded-3xl p-5 relative overflow-hidden" style={glass}>
+                className="p-5 relative overflow-hidden" style={{ ...glass, background: 'rgba(245,181,68,0.06)', borderColor: 'rgba(245,181,68,0.18)' }}>
                 <div className="absolute top-0 left-0 right-0 h-px"
-                  style={{ background: 'linear-gradient(90deg, transparent, rgba(251,191,36,0.25), transparent)' }} />
-                <div className="text-xs font-bold mb-1 tracking-widest" style={{ color: 'rgba(251,191,36,0.7)' }}>⭐ PREMIUM</div>
-                <div className="font-black text-base mb-0.5" style={{ color: textMain }}>Alles freischalten</div>
-                <div className="text-xs mb-4" style={{ color: textMuted }}>KI Voice · Offline-Karten · PDF Export · Push-Warnungen</div>
+                  style={{ background: 'linear-gradient(90deg, transparent, rgba(245,181,68,0.40), transparent)' }} />
+                <div className="text-xs font-bold mb-1 tracking-widest" style={{ color: '#F5B544', fontFamily: 'DM Sans, sans-serif' }}>⭐ PREMIUM</div>
+                <div className="font-black text-base mb-0.5" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>Alles freischalten</div>
+                <div className="text-xs mb-4" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>KI Voice · Offline-Karten · PDF Export · Push-Warnungen</div>
                 <motion.button whileTap={{ scale: 0.96 }}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold"
+                  className="px-5 py-2.5 rounded-[14px] text-sm font-bold"
                   style={{
-                    background: 'rgba(251,191,36,0.08)',
-                    border: '1px solid rgba(251,191,36,0.2)',
-                    color: 'rgba(251,191,36,0.8)',
-                    boxShadow: 'inset 0 1px 0 rgba(251,191,36,0.08)',
+                    background: 'linear-gradient(180deg, #FFCC5C, #D49628)',
+                    border: 'none',
+                    color: '#0A0C10',
+                    boxShadow: '0 4px 16px rgba(245,181,68,0.30)',
+                    fontFamily: 'DM Sans, sans-serif',
                   }}>
                   Jetzt upgraden →
                 </motion.button>
@@ -447,9 +462,11 @@ export default function ProfilePage() {
                 <motion.button onClick={handleLogout} whileTap={{ scale: 0.97 }}
                   className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-sm"
                   style={{
-                    background: 'rgba(248,113,113,0.05)',
-                    border: '1px solid rgba(248,113,113,0.12)',
-                    color: '#f87171',
+                    background: 'rgba(255,107,107,0.06)',
+                    border: '1px solid rgba(255,107,107,0.15)',
+                    color: '#FF6B6B',
+                    fontFamily: 'DM Sans, sans-serif',
+                    borderRadius: 18,
                   }}>
                   <LogOut size={15} /> Abmelden
                 </motion.button>

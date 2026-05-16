@@ -17,12 +17,13 @@ export default function BottomNav() {
   return (
     <nav className="relative z-50 flex-shrink-0"
       style={{
-        height: 'var(--nav-h)',
-        background: 'rgba(6,6,16,0.95)',
-        backdropFilter: 'blur(24px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 -4px 24px rgba(0,0,0,0.5)',
+        background: 'rgba(10,12,16,0.85)',
+        backdropFilter: 'blur(30px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(30px) saturate(160%)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        margin: '0 14px 12px',
+        borderRadius: 28,
+        height: 'auto',
       }}>
       <div className="flex items-center justify-around px-1 py-2">
         {tabs.map((tab) => {
@@ -31,23 +32,21 @@ export default function BottomNav() {
           return (
             <motion.button key={tab.id} whileTap={{ scale: 0.82 }}
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl relative"
-              style={{ minWidth: 48 }}>
+              className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-[18px] relative"
+              style={{ minWidth: 44 }}>
               {active && (
                 <motion.div layoutId="nav-bg"
-                  className="absolute inset-0 rounded-2xl"
+                  className="absolute inset-0 rounded-[18px]"
                   style={{
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                    background: 'rgba(245,181,68,0.14)',
                   }}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
               )}
               <Icon size={19}
-                style={{ color: active ? '#f5f5f5' : 'rgba(255,255,255,0.3)' }}
+                style={{ color: active ? '#F5B544' : '#7A8090' }}
                 strokeWidth={active ? 2.2 : 1.7} />
               <span className="text-[9px] font-semibold relative z-10"
-                style={{ color: active ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)' }}>
+                style={{ color: active ? '#F5B544' : '#7A8090', fontFamily: 'DM Sans, sans-serif' }}>
                 {tab.label}
               </span>
             </motion.button>

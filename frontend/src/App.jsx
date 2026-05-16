@@ -58,8 +58,17 @@ export default function App() {
   }, [])
 
   // Always show landing first if not seen yet (regardless of auth state)
+  const syBg = {
+    background: `
+      radial-gradient(60% 40% at 12% 8%, rgba(245,181,68,0.10), transparent 60%),
+      radial-gradient(50% 35% at 90% 90%, rgba(77,168,255,0.10), transparent 60%),
+      radial-gradient(35% 30% at 80% 12%, rgba(255,138,61,0.06), transparent 70%),
+      linear-gradient(180deg, #05070B 0%, #060810 60%, #04060A 100%)
+    `,
+  }
+
   if (showLanding) return (
-    <div className="app-shell">
+    <div className="app-shell" style={syBg}>
       <div style={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
         <LandingPage onStart={() => setShowLanding(false)} />
       </div>
@@ -69,13 +78,13 @@ export default function App() {
 
   // Wait for Firebase to resolve auth before showing anything
   if (!authReady) return (
-    <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: 'rgba(255,255,255,0.5)', animation: 'spin 0.8s linear infinite' }} />
+    <div className="app-shell" style={{ ...syBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.08)', borderTopColor: '#F5B544', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
 
   if (!user) return (
-    <div className="app-shell">
+    <div className="app-shell" style={syBg}>
       <div style={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
         <LoginPage />
       </div>
@@ -86,7 +95,7 @@ export default function App() {
   const Page = PAGES[activeTab] || HomePage
   const isChatPage = activeTab === 'ai' || activeTab === 'community'
   return (
-    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', ...syBg }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -106,11 +115,12 @@ export default function App() {
         position="top-center"
         toastOptions={{
           style: {
-            background: isDark ? '#1a1a1a' : '#ffffff',
-            color: isDark ? '#f5f5f5' : '#0f172a',
+            background: '#11141A',
+            color: '#F2F4F8',
             borderRadius: 16,
-            border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+            border: '1px solid rgba(255,255,255,0.08)',
             fontSize: 14,
+            fontFamily: 'DM Sans, sans-serif',
           },
         }}
       />

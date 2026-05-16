@@ -41,40 +41,40 @@ const COUNTRY_FLAGS = { de: '🇩🇪', fr: '🇫🇷', at: '🇦🇹', hu: '�
 const G = {
   // glass card
   glass: {
-    background: 'rgba(255,255,255,0.07)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    border: '1px solid rgba(255,255,255,0.13)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)',
+    background: 'rgba(255,255,255,0.04)',
+    backdropFilter: 'blur(28px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 22,
   },
   glassStrong: {
-    background: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(24px) saturate(200%)',
-    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
-    border: '1px solid rgba(255,255,255,0.18)',
-    boxShadow: '0 12px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.06)',
+    backdropFilter: 'blur(28px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 22,
   },
   glassDark: {
-    background: 'rgba(0,0,0,0.35)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
+    background: 'rgba(10,12,16,0.92)',
+    backdropFilter: 'blur(28px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(140%)',
     border: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+    borderRadius: 22,
   },
-  text: '#f5f5f7',
-  muted: 'rgba(255,255,255,0.38)',
-  mutedLight: 'rgba(255,255,255,0.55)',
-  green: '#4ade80',
-  greenGlow: 'rgba(74,222,128,0.2)',
-  greenBorder: 'rgba(74,222,128,0.3)',
-  amber: '#fbbf24',
-  amberGlow: 'rgba(251,191,36,0.18)',
-  amberBorder: 'rgba(251,191,36,0.3)',
-  red: '#f87171',
-  redGlow: 'rgba(248,113,113,0.18)',
-  redBorder: 'rgba(248,113,113,0.3)',
-  blue: '#60a5fa',
-  accent: '#e8192c',
+  text: '#F2F4F8',
+  muted: '#7A8090',
+  mutedLight: '#B6BCC8',
+  green: '#38E58A',
+  greenGlow: 'rgba(56,229,138,0.14)',
+  greenBorder: 'rgba(56,229,138,0.25)',
+  amber: '#F5B544',
+  amberGlow: 'rgba(245,181,68,0.14)',
+  amberBorder: 'rgba(245,181,68,0.25)',
+  red: '#FF6B6B',
+  redGlow: 'rgba(255,107,107,0.14)',
+  redBorder: 'rgba(255,107,107,0.25)',
+  blue: '#4DA8FF',
+  accent: '#F5B544',
 }
 
 function priceColor(p) {
@@ -159,7 +159,7 @@ function StationCard({ station, expanded, onExpand, rank }) {
             {[['DSL', d], ['BNZ', b]].map(([label, price]) => (
               <div key={label} className="text-center">
                 <div className="text-[9px] font-bold tracking-wider mb-0.5" style={{ color: G.muted }}>{label}</div>
-                <div className="font-black text-[17px] leading-none tabular-nums"
+                <div className="sy-pump text-[17px] leading-none"
                   style={{ color: price ? priceColor(price) : 'rgba(255,255,255,0.18)' }}>
                   {price != null ? price.toFixed(3) : '—'}
                 </div>
@@ -184,7 +184,7 @@ function StationCard({ station, expanded, onExpand, rank }) {
                       backdropFilter: 'blur(12px)',
                     }}>
                     <div className="text-[9px] font-bold tracking-widest mb-1.5" style={{ color: priceColor(price) }}>{label}</div>
-                    <div className="font-black text-2xl tabular-nums" style={{ color: priceColor(price) }}>{price.toFixed(3)}</div>
+                    <div className="sy-pump text-2xl" style={{ color: priceColor(price) }}>{price.toFixed(3)}</div>
                     <div className="text-[9px] mt-1" style={{ color: G.muted }}>€ / Liter</div>
                   </div>
                 ))}
@@ -298,11 +298,11 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
         </div>
         {/* GPS */}
         <motion.button whileTap={{ scale: 0.88 }} onClick={useGPS} disabled={gpsLoading}
-          className="w-13 h-13 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ width: 52, height: 52, background: 'rgba(74,222,128,0.12)', border: `1px solid ${G.greenBorder}` }}>
+          className="flex items-center justify-center flex-shrink-0"
+          style={{ width: 52, height: 52, borderRadius: 16, background: G.amberGlow, border: `1px solid ${G.amberBorder}` }}>
           {gpsLoading
-            ? <Loader2 size={15} className="animate-spin" style={{ color: G.green }} />
-            : <Navigation size={15} style={{ color: G.green }} />}
+            ? <Loader2 size={15} className="animate-spin" style={{ color: G.amber }} />
+            : <Navigation size={15} style={{ color: G.amber }} />}
         </motion.button>
         {/* Search button */}
         <motion.button whileTap={{ scale: 0.88 }}
@@ -311,8 +311,8 @@ function LocationSearch({ onResult, country = 'de', placeholder = 'Stadt suchen�
           style={{
             width: 52, height: 52, borderRadius: 16, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: query.trim() ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.05)',
-            border: `1px solid ${query.trim() ? G.amberBorder : 'rgba(255,255,255,0.08)'}`,
+            background: query.trim() ? G.amberGlow : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${query.trim() ? G.amberBorder : 'rgba(255,255,255,0.07)'}`,
           }}>
           <Send size={15} style={{ color: query.trim() ? G.amber : G.muted }} />
         </motion.button>
@@ -433,7 +433,7 @@ function ReportModal({ onClose }) {
         transition={{ type: 'spring', stiffness: 380, damping: 38 }}
         onClick={e => e.stopPropagation()}
         className="w-full rounded-t-[28px] flex flex-col"
-        style={{ ...G.glassDark, background: 'rgba(10,10,20,0.96)', borderBottom: 'none', maxWidth: 480, maxHeight: '88dvh' }}>
+        style={{ background: 'rgba(10,12,16,0.97)', border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none', maxWidth: 480, maxHeight: '88dvh', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)' }}>
 
         <div className="flex-shrink-0 px-5 pt-4 pb-3">
           <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(255,255,255,0.15)' }} />
@@ -579,46 +579,40 @@ export default function FuelPage() {
   const minPrice = dieselPrices.length ? Math.min(...dieselPrices).toFixed(3) : null
 
   return (
-    <div className="page-container" style={{
-      background: 'linear-gradient(160deg, #06060f 0%, #0c0c1e 45%, #080814 100%)',
-      minHeight: '100%',
-    }}>
-      {/* Ambient glow blobs */}
-      <div className="fixed pointer-events-none" style={{ top: -80, left: -60, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', zIndex: 0 }} />
-      <div className="fixed pointer-events-none" style={{ top: 200, right: -80, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(251,191,36,0.05) 0%, transparent 70%)', zIndex: 0 }} />
+    <div style={{ minHeight: '100%', paddingBottom: 32 }}>
 
       <div className="relative z-10 px-4 pt-6 pb-8">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(251,191,36,0.12)', border: `1px solid ${G.amberBorder}`, boxShadow: `0 0 20px rgba(251,191,36,0.1)` }}>
+            <div className="w-11 h-11 rounded-[16px] flex items-center justify-center"
+              style={{ background: G.amberGlow, border: `1px solid ${G.amberBorder}`, boxShadow: `0 0 20px rgba(245,181,68,0.12)` }}>
               <Droplets size={20} style={{ color: G.amber }} />
             </div>
             <div>
-              <h1 className="text-xl font-black leading-tight" style={{ color: G.text }}>Tankpreise</h1>
-              <p className="text-[11px]" style={{ color: G.muted }}>Sıla Yolu · Live Preise</p>
+              <h1 className="text-xl font-black leading-tight" style={{ color: G.text, fontFamily: 'Space Grotesk, sans-serif' }}>Tankstellen</h1>
+              <p className="text-[11px]" style={{ color: G.muted, fontFamily: 'DM Sans, sans-serif' }}>Tankerkönig · Live</p>
             </div>
           </div>
           <motion.button whileTap={{ scale: 0.86 }} onClick={() => loadData(true)}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center"
-            style={G.glass}>
+            className="w-10 h-10 flex items-center justify-center"
+            style={{ ...G.glass, width: 40, height: 40 }}>
             <RefreshCw size={15} style={{ color: G.mutedLight }} />
           </motion.button>
         </div>
 
         {/* ── View Toggle ── */}
-        <div className="flex gap-1 mb-5 p-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex gap-1 mb-5 p-1 rounded-[18px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
           {[['stations', '⛽', 'Tankstellen'], ['summary', '🗺️', 'Länder']].map(([id, emoji, label]) => (
             <button key={id} onClick={() => setActiveView(id)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[14px] text-xs font-bold transition-all"
               style={{
-                background: activeView === id ? 'rgba(255,255,255,0.09)' : 'transparent',
-                color: activeView === id ? G.text : G.muted,
-                border: activeView === id ? '1px solid rgba(255,255,255,0.15)' : '1px solid transparent',
+                background: activeView === id ? G.amberGlow : 'transparent',
+                color: activeView === id ? G.amber : G.muted,
+                border: activeView === id ? `1px solid ${G.amberBorder}` : '1px solid transparent',
                 backdropFilter: activeView === id ? 'blur(12px)' : 'none',
-                boxShadow: activeView === id ? 'inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+                fontFamily: 'DM Sans, sans-serif',
               }}>
               {emoji} {label}
             </button>
@@ -634,13 +628,12 @@ export default function FuelPage() {
                 const active = activeCountry === tab.id
                 return (
                   <button key={tab.id} onClick={() => { setActiveCountry(tab.id); setExpandedId(null) }}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-[12px] text-xs font-bold transition-all"
                     style={{
-                      background: active ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                      color: active ? G.text : G.muted,
-                      border: `1px solid ${active ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)'}`,
-                      backdropFilter: active ? 'blur(12px)' : 'none',
-                      boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                      background: active ? G.amberGlow : 'rgba(255,255,255,0.03)',
+                      color: active ? G.amber : G.muted,
+                      border: `1px solid ${active ? G.amberBorder : 'rgba(255,255,255,0.06)'}`,
+                      fontFamily: 'DM Sans, sans-serif',
                     }}>
                     <span className="text-sm leading-none">{tab.flag}</span>
                     <span>{tab.label}</span>
@@ -652,23 +645,23 @@ export default function FuelPage() {
             {/* Stats bar */}
             {!loading && displayStations.length > 0 && (
               <div className="grid grid-cols-2 gap-3 mb-5">
-                <div className="rounded-2xl px-4 py-3.5" style={G.glass}>
-                  <div className="text-[9px] font-bold tracking-widest mb-1" style={{ color: G.muted }}>Ø DIESEL</div>
+                <div className="px-4 py-3.5" style={G.glass}>
+                  <div className="text-[9px] font-bold tracking-widest mb-1" style={{ color: G.amber, fontFamily: 'DM Sans, sans-serif' }}>Ø DIESEL</div>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-black text-2xl tabular-nums" style={{ color: avgPrice ? priceColor(parseFloat(avgPrice)) : G.muted }}>
+                    <span className="sy-pump text-2xl" style={{ color: avgPrice ? priceColor(parseFloat(avgPrice)) : G.muted }}>
                       {avgPrice ?? '—'}
                     </span>
-                    <span className="text-xs" style={{ color: G.muted }}>€/L</span>
+                    <span className="text-xs" style={{ color: G.muted, fontFamily: 'DM Sans, sans-serif' }}>€/L</span>
                   </div>
                 </div>
-                <div className="rounded-2xl px-4 py-3.5"
-                  style={{ background: 'rgba(74,222,128,0.1)', border: `1px solid ${G.greenBorder}`, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: `0 0 24px rgba(74,222,128,0.08)` }}>
-                  <div className="text-[9px] font-bold tracking-widest mb-1" style={{ color: G.green }}>GÜNSTIGSTE</div>
+                <div className="px-4 py-3.5"
+                  style={{ background: G.greenGlow, border: `1px solid ${G.greenBorder}`, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: 22 }}>
+                  <div className="text-[9px] font-bold tracking-widest mb-1" style={{ color: G.green, fontFamily: 'DM Sans, sans-serif' }}>GÜNSTIGSTE</div>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-black text-2xl tabular-nums" style={{ color: G.green }}>
+                    <span className="sy-pump text-2xl" style={{ color: G.green }}>
                       {minPrice ?? '—'}
                     </span>
-                    <span className="text-xs" style={{ color: G.green }}>€/L</span>
+                    <span className="text-xs" style={{ color: G.green, fontFamily: 'DM Sans, sans-serif' }}>€/L</span>
                   </div>
                 </div>
               </div>
@@ -787,7 +780,7 @@ export default function FuelPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-black text-2xl tabular-nums" style={{ color: priceColor(price) }}>
+                        <div className="sy-pump text-2xl" style={{ color: priceColor(price) }}>
                           {price?.toFixed(3)}
                         </div>
                         <div className="text-[9px] mt-0.5" style={{ color: isLive ? G.green : G.muted }}>
@@ -812,8 +805,8 @@ export default function FuelPage() {
 
         {/* Report button */}
         <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowReport(true)}
-          className="w-full mt-5 py-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
-          style={{ ...G.glass, color: G.mutedLight }}>
+          className="w-full mt-5 py-4 text-sm font-bold flex items-center justify-center gap-2"
+          style={{ ...G.glass, color: G.amber, fontFamily: 'DM Sans, sans-serif', border: `1px solid ${G.amberBorder}`, background: G.amberGlow }}>
           <Fuel size={15} />
           Preis melden
         </motion.button>

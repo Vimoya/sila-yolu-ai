@@ -4,11 +4,11 @@ import { Send, Heart, Image, X, ArrowLeft, Mic, MicOff } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 const glass = {
-  background: 'rgba(255,255,255,0.09)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  backdropFilter: 'blur(20px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-  boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  backdropFilter: 'blur(28px) saturate(140%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(140%)',
+  borderRadius: 22,
 }
 
 const ROOMS = [
@@ -76,9 +76,9 @@ export default function CommunityPage() {
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  const textMain = '#f5f5f5'
-  const textMuted = 'rgba(255,255,255,0.4)'
-  const border = 'rgba(255,255,255,0.08)'
+  const textMain = '#F2F4F8'
+  const textMuted = '#7A8090'
+  const border = 'rgba(255,255,255,0.07)'
 
   useEffect(() => {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
@@ -174,7 +174,7 @@ export default function CommunityPage() {
   // ── Online Users List ──
   if (view === 'online') {
     return (
-      <div className="flex flex-col" style={{ background: 'linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%)', height: '100%' }}>
+      <div className="flex flex-col" style={{ height: '100%' }}>
         <div className="px-4 pt-6 pb-3 flex-shrink-0 flex items-center gap-3">
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => setView('rooms')}
             className="w-9 h-9 rounded-2xl flex items-center justify-center" style={glass}>
@@ -213,7 +213,7 @@ export default function CommunityPage() {
   // ── DM View ──
   if (view === 'dm' && dmTarget) {
     return (
-      <div className="flex flex-col" style={{ background: 'linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%)', height: '100%' }}>
+      <div className="flex flex-col" style={{ height: '100%' }}>
         <div className="px-4 pt-6 pb-3 flex-shrink-0 flex items-center gap-3" style={{ borderBottom: `1px solid ${border}` }}>
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => setView('rooms')}
             className="w-9 h-9 rounded-2xl flex items-center justify-center" style={glass}>
@@ -269,16 +269,19 @@ export default function CommunityPage() {
 
   // ── Main Room View ──
   return (
-    <div className="flex flex-col" style={{ background: 'linear-gradient(135deg, #060610 0%, #0a0a18 50%, #060610 100%)', height: '100%', minHeight: '100%' }}>
+    <div className="flex flex-col" style={{ height: '100%', minHeight: '100%' }}>
 
       {/* Header */}
       <div className="px-4 pt-6 pb-3 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-2xl font-black" style={{ color: textMain }}>Community</h1>
+          <div>
+            <h1 className="text-xl font-black leading-tight" style={{ color: textMain, fontFamily: 'Space Grotesk, sans-serif' }}>Reisende heute</h1>
+            <p className="text-xs mt-0.5" style={{ color: textMuted, fontFamily: 'DM Sans, sans-serif' }}>Topluluk · Community</p>
+          </div>
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => setView('online')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            className="flex items-center gap-2 px-3 py-1.5 rounded-[12px] text-xs font-semibold"
+            style={{ background: 'rgba(56,229,138,0.10)', border: '1px solid rgba(56,229,138,0.20)', color: '#38E58A', fontFamily: 'DM Sans, sans-serif' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38E58A' }} />
             {ONLINE_USERS.length} Online
           </motion.button>
         </div>
@@ -304,14 +307,15 @@ export default function CommunityPage() {
         <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {ROOMS.map(room => (
             <motion.button key={room.id} whileTap={{ scale: 0.94 }} onClick={() => setActiveRoom(room.id)}
-              className="flex-shrink-0 px-3 py-2 rounded-2xl text-xs font-semibold flex items-center gap-1.5"
+              className="flex-shrink-0 px-3 py-2 rounded-[14px] text-xs font-semibold flex items-center gap-1.5"
               style={activeRoom === room.id ? {
-                background: 'rgba(255,255,255,0.1)', color: textMain,
-                border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+                background: 'rgba(245,181,68,0.14)', color: '#F5B544',
+                border: '1px solid rgba(245,181,68,0.25)', backdropFilter: 'blur(28px)',
+                fontFamily: 'DM Sans, sans-serif',
               } : {
                 background: 'rgba(255,255,255,0.04)', color: textMuted,
                 border: '1px solid rgba(255,255,255,0.07)',
+                fontFamily: 'DM Sans, sans-serif',
               }}>
               <span>{room.icon}</span> {room.name}
             </motion.button>
@@ -349,8 +353,8 @@ export default function CommunityPage() {
                     <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{msg.time}</span>
                     {!msg.isMe && (
                       <motion.button whileTap={{ scale: 0.8 }} onClick={() => toggleLike(msg.id)} className="flex items-center gap-0.5">
-                        <Heart size={10} style={{ color: likedIds.has(msg.id) ? '#f87171' : 'rgba(255,255,255,0.25)', fill: likedIds.has(msg.id) ? '#f87171' : 'none' }} />
-                        <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{msg.likes + (likedIds.has(msg.id) ? 1 : 0)}</span>
+                        <Heart size={10} style={{ color: likedIds.has(msg.id) ? '#E854A8' : '#4E5462', fill: likedIds.has(msg.id) ? '#E854A8' : 'none' }} />
+                        <span className="text-[10px]" style={{ color: '#4E5462', fontFamily: 'DM Sans, sans-serif' }}>{msg.likes + (likedIds.has(msg.id) ? 1 : 0)}</span>
                       </motion.button>
                     )}
                   </div>
@@ -370,11 +374,11 @@ export default function CommunityPage() {
 }
 
 function InputBar({ input, setInput, photoPreview, setPhotoPreview, setPhotoFile, fileInputRef, handlePhotoChange, sendMessage, recording, toggleRecording, textMain, textMuted, border }) {
-  const glass = {
-    background: 'rgba(255,255,255,0.09)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+  const glassBtn = {
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    backdropFilter: 'blur(28px)',
+    WebkitBackdropFilter: 'blur(28px)',
   }
   return (
     <>
@@ -386,7 +390,7 @@ function InputBar({ input, setInput, photoPreview, setPhotoPreview, setPhotoFile
               <img src={photoPreview} alt="Vorschau" className="rounded-2xl object-cover" style={{ height: 72 }} />
               <button onClick={() => { setPhotoFile(null); setPhotoPreview(null) }}
                 className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <X size={11} style={{ color: 'white' }} />
               </button>
             </div>
@@ -394,35 +398,35 @@ function InputBar({ input, setInput, photoPreview, setPhotoPreview, setPhotoFile
         )}
       </AnimatePresence>
 
-      <div className="px-4 pb-4 pt-2 flex-shrink-0" style={{ borderTop: `1px solid ${border}` }}>
-        <div className="flex items-center gap-2">
+      <div className="px-3 pt-2 flex-shrink-0" style={{ borderTop: `1px solid ${border}`, paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+        <div className="flex items-center gap-1.5">
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={glass}>
-            <Image size={15} style={{ color: textMuted }} />
+            className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0" style={glassBtn}>
+            <Image size={14} style={{ color: textMuted }} />
           </motion.button>
           <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
 
-          <div className="flex-1 flex items-center rounded-2xl px-3"
-            style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+          <div className="flex-1 flex items-center rounded-[12px] px-3 min-w-0"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <input value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
               placeholder="Nachricht schreiben..."
-              className="flex-1 py-3 text-sm bg-transparent outline-none"
-              style={{ color: textMain }} />
+              className="flex-1 py-2.5 text-sm bg-transparent outline-none min-w-0"
+              style={{ color: textMain, fontFamily: 'DM Sans, sans-serif' }} />
           </div>
 
           <motion.button whileTap={{ scale: 0.9 }} onClick={toggleRecording}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={recording ? { background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' } : glass}>
-            {recording ? <MicOff size={15} style={{ color: '#f87171' }} /> : <Mic size={15} style={{ color: textMuted }} />}
+            className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0"
+            style={recording ? { background: 'rgba(255,107,107,0.12)', border: '1px solid rgba(255,107,107,0.25)' } : glassBtn}>
+            {recording ? <MicOff size={14} style={{ color: '#FF6B6B' }} /> : <Mic size={14} style={{ color: textMuted }} />}
           </motion.button>
 
           <motion.button whileTap={{ scale: 0.9 }} onClick={sendMessage}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+            className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0"
             style={(input.trim() || photoPreview) ? {
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-            } : glass}>
-            <Send size={15} style={{ color: (input.trim() || photoPreview) ? textMain : textMuted }} />
+              background: 'rgba(245,181,68,0.14)', border: '1px solid rgba(245,181,68,0.25)',
+            } : glassBtn}>
+            <Send size={14} style={{ color: (input.trim() || photoPreview) ? '#F5B544' : textMuted }} />
           </motion.button>
         </div>
       </div>
