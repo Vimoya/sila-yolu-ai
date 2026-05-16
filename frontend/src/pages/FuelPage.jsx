@@ -515,19 +515,26 @@ export default function FuelPage() {
       {!loading && sorted.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           {sorted.map((s, i) => (
-            <StationCard
-              key={s.id || i}
-              name={s.name}
-              address={s.address}
-              diesel={s.diesel}
-              benzin={s.benzin}
-              e5={s.e5}
-              e10={s.e10}
-              cheap={s.cheap || i === 0}
-              open={s.isOpen !== false}
-              dist={s.dist ? `${Number(s.dist).toFixed(1)} km` : (s.note?.includes('km') ? s.note : null)}
-              onNav={() => openNav(s)}
-            />
+            <div key={s.id || i}>
+              {i === 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingLeft: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gruen)', boxShadow: '0 0 8px var(--gruen)', flexShrink: 0 }}/>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.5 }}>GÜNSTIGSTE TANKSTELLE IN DER NÄHE</span>
+                </div>
+              )}
+              <StationCard
+                name={s.name}
+                address={s.address}
+                diesel={s.diesel}
+                benzin={s.benzin}
+                e5={s.e5}
+                e10={s.e10}
+                cheap={s.cheap || i === 0}
+                open={s.isOpen !== false}
+                dist={s.dist ? `${Number(s.dist).toFixed(1)} km` : (s.note?.includes('km') ? s.note : null)}
+                onNav={() => openNav(s)}
+              />
+            </div>
           ))}
         </div>
       )}
