@@ -2,6 +2,27 @@ import { Router } from 'express'
 
 const router = Router()
 
+// Live locations — TTL 15 Min
+const LOCATION_TTL = 15 * 60 * 1000
+const locations = new Map() // userId → { lat, lng, name, route, updatedAt }
+
+router.post('/location', (req, res) => {
+  const { userId, name, lat, lng, route } = req.body
+  if (!userId || !lat || !lng) return res.status(400).json({ error: 'userId, lat, lng required' })
+  locations.set(userId, { userId, name: name || 'Reisender', lat, lng, route: route || '', updatedAt: Date.now() })
+  res.json({ ok: true })
+})
+
+router.get('/locations', (_, res) => {
+  const now = Date.now()
+  const active = []
+  for (const [id, loc] of locations) {
+    if (now - loc.updatedAt > LOCATION_TTL) { locations.delete(id); continue }
+    active.push({ ...loc, minsAgo: Math.floor((now - loc.updatedAt) / 60000) })
+  }
+  res.json({ locations: active })
+})
+
 // In-memory posts — resets on deploy, realistisch für MVP
 const posts = [
   {

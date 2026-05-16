@@ -1,5 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { useStore } from '../store/useStore'
+
+// Fix leaflet default icon paths broken by bundlers
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+function makeCarIcon(color = '#F5B544') {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:32px;height:32px;border-radius:50%;background:${color};border:3px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,0.6)">🚗</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18],
+  })
+}
+
+function FitBounds({ locations }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!locations.length) return
+    const bounds = L.latLngBounds(locations.map(l => [l.lat, l.lng]))
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 })
+  }, [locations.length])
+  return null
+}
 
 const API = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -110,6 +141,8 @@ const STATUS_OPTS = [
   { value: 'red',    label: '🔴 Stark belegt',          sub: '> 90 Min' },
 ]
 
+const AVATAR_COLORS = ['#F5B544','#38E58A','#4DA8FF','#FF8A3D','#E854A8']
+
 export default function BorderPage() {
   const { user } = useStore()
   const [borders, setBorders] = useState(
@@ -121,6 +154,64 @@ export default function BorderPage() {
   const [sending, setSending] = useState(false)
   const [lastUpdate, setLastUpdate] = useState(Date.now())
   const [filter, setFilter] = useState('Alle')
+
+  // Live locations
+  const [liveLocations, setLiveLocations] = useState([])
+  const [sharingLocation, setSharingLocation] = useState(false)
+  const [locationError, setLocationError] = useState(null)
+  const locationIntervalRef = useRef(null)
+
+  async function fetchLocations() {
+    try {
+      const r = await fetch(`${API}/api/community/locations`)
+      const d = await r.json()
+      setLiveLocations(d.locations || [])
+    } catch {}
+  }
+
+  useEffect(() => {
+    fetchLocations()
+    const id = setInterval(fetchLocations, 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  async function postLocation(lat, lng) {
+    try {
+      await fetch(`${API}/api/community/location`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.uid || user?.email || 'anon-' + Math.random().toString(36).slice(2, 8),
+          name: user?.displayName || user?.email?.split('@')[0] || 'Reisender',
+          lat, lng,
+          route: 'Sıla Yolu',
+        }),
+      })
+      fetchLocations()
+    } catch {}
+  }
+
+  function startSharing() {
+    if (!navigator.geolocation) { setLocationError('Kein GPS verfügbar'); return }
+    setLocationError(null)
+    setSharingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      pos => postLocation(pos.coords.latitude, pos.coords.longitude),
+      () => { setLocationError('GPS-Zugriff verweigert'); setSharingLocation(false) }
+    )
+    locationIntervalRef.current = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        pos => postLocation(pos.coords.latitude, pos.coords.longitude),
+        () => {}
+      )
+    }, 60000)
+  }
+
+  function stopSharing() {
+    setSharingLocation(false)
+    clearInterval(locationIntervalRef.current)
+  }
+
+  useEffect(() => () => clearInterval(locationIntervalRef.current), [])
 
   // Load community reports for borders
   useEffect(() => {
@@ -234,6 +325,85 @@ export default function BorderPage() {
           <span style={{ color: 'var(--fg-3)', fontSize: 11, flexShrink: 0 }}>
             {mins === 0 ? 'Gerade aktualisiert' : `Vor ${mins} Min.`}
           </span>
+        </div>
+      </div>
+
+      {/* Live-Karte */}
+      <div style={{ ...glass, marginBottom: 14, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14 }}>
+              🔴 Live-Standorte
+              {liveLocations.length > 0 && (
+                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--gruen)', background: 'rgba(56,229,138,0.12)', border: '1px solid rgba(56,229,138,0.25)', borderRadius: 999, padding: '2px 8px' }}>
+                  {liveLocations.length} aktiv
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2 }}>Fahrer auf der Sıla Yolu · Aktualisiert alle 30 Sek.</div>
+          </div>
+          {user ? (
+            <button onClick={sharingLocation ? stopSharing : startSharing} style={{
+              flexShrink: 0, padding: '7px 13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700,
+              background: sharingLocation ? 'rgba(232,84,168,0.15)' : 'rgba(56,229,138,0.12)',
+              color: sharingLocation ? 'var(--magenta)' : 'var(--gruen)',
+              border: sharingLocation ? '1px solid rgba(232,84,168,0.3)' : '1px solid rgba(56,229,138,0.25)',
+            }}>
+              {sharingLocation ? '⏹ Teilen stoppen' : '📍 Standort teilen'}
+            </button>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>Anmelden um Standort zu teilen</span>
+          )}
+        </div>
+        {locationError && (
+          <div style={{ padding: '0 16px 10px', color: 'var(--orange)', fontSize: 12 }}>{locationError}</div>
+        )}
+        <div style={{ height: 240, position: 'relative' }}>
+          <MapContainer
+            center={[45.5, 18.0]}
+            zoom={4}
+            style={{ height: '100%', width: '100%', background: '#0A0C10' }}
+            zoomControl={false}
+            attributionControl={false}
+          >
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution=""
+            />
+            {liveLocations.map((loc, i) => (
+              <Marker
+                key={loc.userId}
+                position={[loc.lat, loc.lng]}
+                icon={makeCarIcon(AVATAR_COLORS[i % AVATAR_COLORS.length])}
+              >
+                <Popup>
+                  <div style={{ fontFamily: 'sans-serif', fontSize: 13, minWidth: 140 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>🚗 {loc.name}</div>
+                    {loc.route && <div style={{ color: '#666', fontSize: 11 }}>{loc.route}</div>}
+                    <div style={{ color: '#999', fontSize: 11, marginTop: 3 }}>
+                      {loc.minsAgo === 0 ? 'Gerade eben' : `Vor ${loc.minsAgo} Min.`}
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+            {liveLocations.length > 1 && <FitBounds locations={liveLocations} />}
+          </MapContainer>
+          {liveLocations.length === 0 && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none', zIndex: 10,
+            }}>
+              <div style={{
+                background: 'rgba(10,12,16,0.85)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 14, padding: '10px 18px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 20, marginBottom: 4 }}>🗺️</div>
+                <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>Noch keine aktiven Fahrer</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
