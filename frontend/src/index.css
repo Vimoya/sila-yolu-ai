@@ -142,3 +142,56 @@ body {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+/* Prevent horizontal overflow on all pages */
+.page-content { width: 100%; max-width: 100%; overflow-x: hidden; }
+
+/* Inputs and buttons always full-width-safe */
+input, button, select { max-width: 100%; }
+
+/* Grid: switch to single column on very narrow screens */
+@media (max-width: 360px) {
+  .grid-2 { grid-template-columns: 1fr !important; }
+}
+
+/* Prevent text overflow everywhere */
+h1, h2, h3, p, div, span {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Station card price row wraps on narrow screens */
+@media (max-width: 380px) {
+  .station-prices { flex-wrap: wrap !important; }
+  .station-prices > * { min-width: calc(50% - 4px) !important; }
+}
+
+/* Avg price grid — min column width */
+.avg-price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 340px) {
+  .avg-price-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Route form: vehicle grid */
+@media (max-width: 380px) {
+  .route-vehicle-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Safe area padding for notched phones */
+.page-root {
+  padding-bottom: max(110px, calc(80px + env(safe-area-inset-bottom)));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+

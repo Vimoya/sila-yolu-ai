@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
+import { useT } from '../i18n'
 import { IconSearch, IconPin, IconArrow, IconBolt, IconChevron, IconClock, IconFuel } from '../components/Icons'
 
 const API = import.meta.env.VITE_API_BASE_URL || ''
@@ -126,10 +127,13 @@ const ROUTE_OPTIONS_STATIC = [
 ]
 
 export default function RoutePage() {
-  const { setCurrentRoute, routeSettings, setRouteSettings, routeResult, setRouteResult } = useStore()
+  const t = useT()
+  const { setCurrentRoute, routeSettings, setRouteSettings, routeResult, setRouteResult, tankSize, setTankSize, saveRoute } = useStore()
   const { start, dest, fuel, consumption, fuelPrice, avoidToll, selectedRouteKey, persons } = routeSettings
 
   const [consumptionInput, setConsumptionInput] = useState(String(consumption || 8))
+  const [tankInput, setTankInput] = useState(String(tankSize || 60))
+  const [routeSavedId, setRouteSavedId] = useState(null)
   const [startSugg, setStartSugg] = useState([])
   const [destSugg, setDestSugg] = useState([])
   const [showStartSugg, setShowStartSugg] = useState(false)
@@ -328,6 +332,8 @@ export default function RoutePage() {
       fetchAiTips(best)
       setRouteSettings({ selectedRouteKey: best.key })
       setCurrentRoute({ ...best, start, dest })
+      saveRoute({ start, dest, routeKey: best.key, km: best.km, hours: best.hours, total: best.total, countries: best.countries })
+      setRouteSavedId(Date.now())
     } catch (e) { setError(`Fehler: ${e.message}`) }
     setCalculating(false)
   }
@@ -380,9 +386,9 @@ export default function RoutePage() {
       {/* Header */}
       <div style={{ position: 'relative', paddingTop: 52, paddingBottom: 18, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ color: 'var(--fg-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Türkiye yolu</div>
+          <div style={{ color: 'var(--fg-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{t.routeSubtitle}</div>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: -0.6, color: 'var(--fg)' }}>
-            Route nach <span style={{ color: 'var(--orange)' }}>Türkei</span>
+            {t.routeTitle} <span style={{ color: 'var(--orange)' }}>Türkei</span>
           </div>
         </div>
         <button onClick={calculate} disabled={calculating} style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(245,181,68,0.12)', border: '1px solid rgba(245,181,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginBottom: 4 }}>
@@ -400,7 +406,7 @@ export default function RoutePage() {
               <IconPin size={15} style={{ color: 'var(--turkis)' }}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>Von</div>
+              <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>{t.from}</div>
               <div style={{ position: 'relative' }}>
                 <input value={start} onChange={e => searchStart(e.target.value)}
                   onFocus={() => startSugg.length > 0 && setShowStartSugg(true)}
@@ -436,7 +442,7 @@ export default function RoutePage() {
               <IconPin size={15} style={{ color: 'var(--orange)' }}/>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>Nach</div>
+              <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>{t.to}</div>
               <div style={{ position: 'relative' }}>
                 <input value={dest} onChange={e => searchDest(e.target.value)}
                   onFocus={() => searchDest(dest)}
@@ -461,7 +467,7 @@ export default function RoutePage() {
         {/* Vehicle grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div>
-            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Kraftstoff</div>
+            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>{t.fuelType}</div>
             <div style={{ position: 'relative' }}>
               <select value={fuel} onChange={e => setRouteSettings({ fuel: e.target.value })}
                 style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none', paddingRight: 28, cursor: 'pointer', padding: '8px 12px', fontSize: 13, color: '#F2F4F8', background: 'rgba(255,255,255,0.05)' }}>
@@ -473,7 +479,7 @@ export default function RoutePage() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Personen</div>
+            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>{t.persons}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
               <button onClick={() => setRouteSettings({ persons: Math.max(1, (persons || 4) - 1) })} style={{ width: 36, height: 38, background: 'none', border: 'none', color: 'var(--fg-2)', fontSize: 18, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>−</button>
               <span style={{ flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--fg)' }}>{persons || 4}</span>
@@ -482,10 +488,10 @@ export default function RoutePage() {
           </div>
         </div>
 
-        {/* Consumption */}
+        {/* Consumption + Tank */}
         <div style={{ padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>Verbrauch & Preis</div>
+            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>{t.consumption}</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <span className="sy-pump" style={{ fontSize: 13, color: 'var(--turkis)' }}>{consumption} L/100</span>
               <span className="sy-pump" style={{ fontSize: 13, color: 'var(--gruen)' }}>{fuelPrice.toFixed(2)} €/L</span>
@@ -502,11 +508,27 @@ export default function RoutePage() {
             }} min={2} max={30} step={0.5} style={{ ...inputStyle, padding: '8px 12px', fontSize: 13 }} placeholder="L/100km"/>
             <input type="range" min={1.0} max={2.5} step={0.05} value={fuelPrice} onChange={e => setRouteSettings({ fuelPrice: +e.target.value })} style={{ accentColor: '#F5B544', width: '100%', alignSelf: 'center' }}/>
           </div>
+          {/* Tank size */}
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>{t.tankSize}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="number" value={tankInput} onChange={e => {
+                setTankInput(e.target.value)
+                const v = parseInt(e.target.value)
+                if (!isNaN(v) && v >= 20 && v <= 200) setTankSize(v)
+              }} min={20} max={200} step={5} style={{ ...inputStyle, padding: '8px 12px', fontSize: 13, width: 90, flexShrink: 0 }} placeholder="60"/>
+              {consumption > 0 && tankSize > 0 && (
+                <div style={{ fontSize: 12, color: 'var(--gruen)', fontWeight: 600 }}>
+                  ⛽ {t.rangeInfo}: <span className="sy-pump">{Math.round(tankSize / consumption * 100)}</span> km
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Route options */}
         <div style={{ paddingTop: 14 }}>
-          <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 10 }}>Route wählen</div>
+          <div style={{ fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 10 }}>{t.chooseRoute}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {routeOptions.map(opt => (
               <RouteOption key={opt.key} {...opt} active={selectedKey === opt.key} onClick={() => selectRoute(opt.key)}/>
@@ -531,8 +553,8 @@ export default function RoutePage() {
           boxShadow: calculating ? 'none' : '0 8px 28px rgba(245,181,68,0.4), inset 0 1px 0 rgba(255,255,255,0.4)',
         }}>
           {calculating
-            ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(31,20,2,0.3)', borderTopColor: '#1F1402', animation: 'spin 0.8s linear infinite' }}/> Berechne KI-Route...</>
-            : <><IconBolt size={16}/> Route mit KI berechnen</>}
+            ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(31,20,2,0.3)', borderTopColor: '#1F1402', animation: 'spin 0.8s linear infinite' }}/> {t.calculating}</>
+            : <><IconBolt size={16}/> {t.calcBtn}</>}
         </button>
       </div>
 
@@ -556,8 +578,8 @@ export default function RoutePage() {
           {selectedResult?.fees?.length > 0 && (
             <div style={{ ...glass, padding: 16, marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>Aufschlüsselung pro Land</span>
-                <Tag color="var(--e5)">{selectedResult?.countries?.length || 5} Länder</Tag>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>{t.countryBreakdown}</span>
+                <Tag color="var(--e5)">{selectedResult?.countries?.length || 5} {t.countries}</Tag>
               </div>
               {selectedResult.fees.filter(f => f.required !== false || f.cost > 0).map((fee, i, arr) => {
                 const typeIcon = fee.type === 'tunnel' ? '🚇' : fee.type === 'vignette' ? '🏷️' : fee.type === 'toll' ? '🛣️' : 'ℹ️'
@@ -581,30 +603,32 @@ export default function RoutePage() {
             </div>
           )}
 
-          {/* Tank stops */}
+          {/* Tank stops — no prices, only location info */}
           {((aiTankStops?.length > 0) || (selectedResult?.tankStops?.length > 0)) && (
             <div style={{ ...glass, padding: 16, marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>Empfohlene Tankstopps</span>
-                {!tipsLoading && aiTankStops?.length > 0 && <Tag color="var(--gruen)" style={{ fontSize: 10 }}>KI-optimiert</Tag>}
-                {tipsLoading && <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>Lädt...</span>}
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>{t.tankStops}</span>
+                {!tipsLoading && aiTankStops?.length > 0 && <Tag color="var(--gruen)" style={{ fontSize: 10 }}>{t.aiOptimized}</Tag>}
+                {tipsLoading && <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.loading}</span>}
               </div>
-              {(aiTankStops?.length > 0 ? aiTankStops : selectedResult.tankStops).map((s, i, arr) => {
-                const price = typeof s.price === 'number' ? s.price : parseFloat(s.price)
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>{s.flag}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>{s.city}</div>
-                      <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 1 }}>~{s.km?.toLocaleString()} km</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      {!isNaN(price) && price > 0 && <div className="sy-pump" style={{ fontSize: 15, color: 'var(--gruen)' }}>{price.toFixed(2)} €</div>}
-                      {s.tip && <Tag color="var(--turkis)" style={{ fontSize: 9, marginTop: 4 }}>EMPFOHLEN</Tag>}
+              {(aiTankStops?.length > 0 ? aiTankStops : selectedResult.tankStops).map((s, i, arr) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{s.flag}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>{s.city}</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 1 }}>
+                      {s.country && <span style={{ marginRight: 6, color: 'var(--turkis)', fontWeight: 600 }}>{s.country}</span>}
+                      ~{s.km?.toLocaleString()} km
                     </div>
                   </div>
-                )
-              })}
+                  {s.tip && <Tag color="var(--gruen)" style={{ fontSize: 9 }}>⛽ Tanken</Tag>}
+                </div>
+              ))}
+              {consumption > 0 && tankSize > 0 && (
+                <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(56,229,138,0.06)', border: '1px solid rgba(56,229,138,0.15)', fontSize: 12, color: 'var(--gruen)' }}>
+                  ⛽ {t.rangeInfo}: <strong>{Math.round(tankSize / consumption * 100)} km</strong> · {t.refuelAt}: <strong>~{Math.round(tankSize / consumption * 100 * 0.85)} km</strong>
+                </div>
+              )}
             </div>
           )}
 

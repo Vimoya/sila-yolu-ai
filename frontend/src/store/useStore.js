@@ -10,9 +10,12 @@ export const useStore = create(
       currentRoute: null,
       routeResult: null,
       checklist: {},
-      lastPosition: null, // { lat, lng, city, updatedAt }
-      fuelLastSearch: null,   // { query, stations, avgPrices, source, ts }
-      fuelLastSearchAt: null, // timestamp ms
+      lastPosition: null,
+      fuelLastSearch: null,
+      fuelLastSearchAt: null,
+      savedRoutes: [],   // [{ id, start, dest, routeKey, km, hours, total, date, countries }]
+      tankSize: 60,      // Liter — User-Eingabe
+      language: localStorage.getItem('lang') || 'de',
 
       // Route settings — persisted so user doesn't re-enter every time
       routeSettings: {
@@ -36,6 +39,14 @@ export const useStore = create(
       setRouteResult: (result) => set({ routeResult: result }),
       setRouteSettings: (settings) => set((s) => ({ routeSettings: { ...s.routeSettings, ...settings } })),
       toggleCheckItem: (id) => set((s) => ({ checklist: { ...s.checklist, [id]: !s.checklist[id] } })),
+      setTankSize: (v) => set({ tankSize: v }),
+      setLanguage: (lang) => { localStorage.setItem('lang', lang); set({ language: lang }) },
+      saveRoute: (route) => set((s) => {
+        const entry = { ...route, id: Date.now(), date: new Date().toISOString() }
+        const existing = s.savedRoutes.filter(r => !(r.start === route.start && r.dest === route.dest && r.routeKey === route.routeKey))
+        return { savedRoutes: [entry, ...existing].slice(0, 10) }
+      }),
+      deleteRoute: (id) => set((s) => ({ savedRoutes: s.savedRoutes.filter(r => r.id !== id) })),
     }),
     {
       name: 'sila-store',
@@ -47,6 +58,9 @@ export const useStore = create(
         lastPosition: s.lastPosition,
         fuelLastSearch: s.fuelLastSearch,
         fuelLastSearchAt: s.fuelLastSearchAt,
+        savedRoutes: s.savedRoutes,
+        tankSize: s.tankSize,
+        language: s.language,
       }),
     }
   )

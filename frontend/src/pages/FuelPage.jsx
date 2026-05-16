@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { IconSearch, IconArrow } from '../components/Icons'
 import { useStore } from '../store/useStore'
+import { useT } from '../i18n'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -196,6 +197,7 @@ const SORT_OPTS = ['Diesel', 'Benzin', 'Entfernung', 'Name']
 const COOLDOWN_MS = 90 * 60 * 1000 // 1.5 Stunden
 
 export default function FuelPage() {
+  const t = useT()
   const { user, lastPosition, setLastPosition, fuelLastSearch, fuelLastSearchAt, setFuelLastSearch, setActiveTab } = useStore()
   const [userPos, setUserPos] = useState(lastPosition ? { lat: lastPosition.lat, lng: lastPosition.lng } : null)
   const [locationLabel, setLocationLabel] = useState(lastPosition?.city || 'Standort ermitteln...')
@@ -237,21 +239,25 @@ export default function FuelPage() {
     try {
       const res = await fetch(`${API_BASE}/api/fuel/nearby?lat=${lat}&lng=${lng}&country=de`)
       const data = await res.json()
-      if (data.stations?.length) {
+      if (data.stations?.length && data.source?.toLowerCase().includes('tankerkönig')) {
         setStations(data.stations)
-        setSource(data.source || 'Tankerkönig')
+        setSource(data.source)
         const ds = data.stations.map(s => s.diesel).filter(Boolean)
-        const bs = data.stations.map(s => s.benzin ?? s.e5).filter(Boolean)
+        const bs = data.stations.map(s => s.e5 ?? s.benzin).filter(Boolean)
+        const e10s = data.stations.map(s => s.e10).filter(Boolean)
         const avg = {
           diesel: ds.length ? (ds.reduce((a, b) => a + b) / ds.length).toFixed(3) : null,
-          e10: null,
+          e10: e10s.length ? (e10s.reduce((a, b) => a + b) / e10s.length).toFixed(3) : null,
           e5: bs.length ? (bs.reduce((a, b) => a + b) / bs.length).toFixed(3) : null,
         }
         setAvgPrices(avg)
-        setFuelLastSearch({ query: label || locationLabel, stations: data.stations, avgPrices: avg, source: data.source || 'Tankerkönig' })
+        setFuelLastSearch({ query: label || locationLabel, stations: data.stations, avgPrices: avg, source: data.source })
+      } else if (data.stations?.length) {
+        setError('Nur Daten aus Deutschland (Tankerkönig) verfügbar.')
+        setStations([])
       } else {
         setStations([])
-        setError('Keine Tankstellen gefunden – bitte anderen Ort eingeben.')
+        setError('Keine Tankstellen gefunden – bitte deutschen Ort eingeben.')
       }
     } catch {
       setError('Verbindungsfehler – bitte erneut versuchen.')
@@ -397,15 +403,15 @@ export default function FuelPage() {
         }}>
           <div style={{ fontSize: 28, flexShrink: 0 }}>⛽</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Anmeldung erforderlich</div>
-            <div style={{ color: 'var(--fg-3)', fontSize: 12, lineHeight: 1.5 }}>Neue Suche nur für registrierte Nutzer</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{t.loginRequired}</div>
+            <div style={{ color: 'var(--fg-3)', fontSize: 12, lineHeight: 1.5 }}>{t.loginDesc}</div>
           </div>
           <button onClick={() => setActiveTab('profile')} style={{
             padding: '9px 16px', borderRadius: 12, flexShrink: 0,
             background: 'linear-gradient(180deg, #FFCC5C, #D49628)',
             color: '#1F1402', fontWeight: 800, fontSize: 13,
             border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}>Anmelden</button>
+          }}>{t.loginBtn}</button>
         </div>
       )}
 
@@ -425,7 +431,7 @@ export default function FuelPage() {
             onFocus={() => setSearchFocus(true)}
             onBlur={() => setTimeout(() => setSearchFocus(false), 200)}
             onKeyDown={e => e.key === 'Enter' && handleSearchSubmit()}
-            placeholder={cooldownLeft > 0 ? `Neue Suche in ${cooldownMins} Min. möglich…` : 'Stadt oder Adresse suchen…'}
+            placeholder={cooldownLeft > 0 ? `${t.cooldownNote} ${cooldownMins} ${t.min}…` : t.searchPlaceholder}
             disabled={cooldownLeft > 0}
             style={{
               flex: 1, background: 'none', border: 'none', outline: 'none',
@@ -444,7 +450,7 @@ export default function FuelPage() {
               fontFamily: 'var(--font-body)',
             }}
           >
-            <span>{gpsLoading ? '⏳' : '📍'}</span> GPS
+            <span>{gpsLoading ? '⏳' : '📍'}</span> {t.gpsBtn}
           </button>
         </div>
 
@@ -452,7 +458,7 @@ export default function FuelPage() {
         {cooldownLeft > 0 && (
           <div style={{ marginTop: 8, padding: '8px 14px', borderRadius: 12, background: 'rgba(245,181,68,0.08)', border: '1px solid rgba(245,181,68,0.2)', fontSize: 12, color: 'var(--turkis)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>⏱</span>
-            <span>Nächste Suche in <strong>{cooldownMins} Min.</strong> möglich · Letzte Suche: <strong>{fuelLastSearch?.query}</strong></span>
+            <span>{t.cooldownNote} <strong>{cooldownMins} {t.min}</strong> {t.possible} <strong>{fuelLastSearch?.query}</strong></span>
           </div>
         )}
 
@@ -523,7 +529,7 @@ export default function FuelPage() {
           <div style={{ ...glass, background: 'rgba(56,229,138,0.04)', border: '1px solid rgba(56,229,138,0.25)', padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gruen)', boxShadow: '0 0 8px var(--gruen)' }}/>
-              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.8, textTransform: 'uppercase' }}>Günstigste Tankstelle in der Nähe</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t.cheapest}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -573,7 +579,7 @@ export default function FuelPage() {
               {i === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingLeft: 4 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gruen)', boxShadow: '0 0 8px var(--gruen)', flexShrink: 0 }}/>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.5 }}>GÜNSTIGSTE TANKSTELLE IN DER NÄHE</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--gruen)', letterSpacing: 0.5 }}>{t.cheapest.toUpperCase()}</span>
                 </div>
               )}
               <StationCard

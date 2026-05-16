@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { useT } from '../i18n'
 import { auth } from '../firebase/config'
 import { signOut, updateProfile } from 'firebase/auth'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
@@ -170,7 +171,7 @@ const ROUTE_LABELS = {
   greece_route:    { name: 'Griechenland',     icon: '☀️' },
 }
 const FUEL_LABELS = { diesel: 'Diesel', e10: 'Benzin (E10)', e5: 'Super (E5)' }
-const LANGUAGES = ['Deutsch', 'Türkçe', 'English']
+const LANGUAGES = [['de','🇩🇪 Deutsch'], ['tr','🇹🇷 Türkçe'], ['en','🇬🇧 English']]
 
 // ─── Login form (shown when not logged in) ───────────────────────────────────
 function LoginForm({ onSuccess }) {
@@ -282,7 +283,8 @@ function LoginForm({ onSuccess }) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { user, setUser, checklist, toggleCheckItem, routeSettings, setRouteSettings, routeResult } = useStore()
+  const t = useT()
+  const { user, setUser, checklist, toggleCheckItem, routeSettings, setRouteSettings, routeResult, savedRoutes, deleteRoute, language, setLanguage } = useStore()
   const [activeTab, setActiveTab] = useState('profil')
   const [editing, setEditing] = useState(false)
   const [notifOn, setNotifOn] = useState(() => localStorage.getItem('notifOn') !== 'false')
@@ -292,7 +294,7 @@ export default function ProfilePage() {
   const [addingItem, setAddingItem] = useState(false)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const [modal, setModal] = useState(null) // 'language' | 'privacy' | 'name'
-  const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem('lang') || 'Deutsch')
+  const selectedLang = language || 'de'
 
   const [editCar, setEditCar] = useState(routeSettings.car || '')
   const [editConsumption, setEditConsumption] = useState(routeSettings.consumption || 8)
@@ -337,9 +339,8 @@ export default function ProfilePage() {
     localStorage.setItem('communityNotif', v)
   }
 
-  function selectLang(lang) {
-    setSelectedLang(lang)
-    localStorage.setItem('lang', lang)
+  function selectLang(code) {
+    setLanguage(code)
     setModal(null)
   }
 
@@ -472,25 +473,33 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Last routes */}
-          {routeResult?.routes && (
-            <div style={{ ...glass, padding: '14px 16px', marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Letzte berechnete Routen</div>
-              {routeResult.routes.slice(0, 3).map((r, i) => {
-                const info = ROUTE_LABELS[r.key] || {}
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                    <span style={{ fontSize: 20 }}>{info.icon || '🗺️'}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700 }}>{r.name || info.name}</div>
-                      <div style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 1 }}>{r.km?.toLocaleString()} km · ~{r.hours}h</div>
+          {/* Saved routes */}
+          <div style={{ ...glass, padding: '14px 16px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>{t.savedRoutes}</div>
+            {!savedRoutes?.length ? (
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>{t.noSavedRoutes}</div>
+            ) : savedRoutes.slice(0, 5).map((r, i) => {
+              const info = ROUTE_LABELS[r.routeKey] || {}
+              const dateStr = r.date ? new Date(r.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''
+              return (
+                <div key={r.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < savedRoutes.slice(0,5).length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{info.icon || '🗺️'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.start} → {r.dest}</div>
+                    <div style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 1 }}>
+                      {r.km?.toLocaleString()} km · ~{r.hours}h
+                      {r.countries?.length ? ` · ${r.countries.length} Länder` : ''}
+                      {dateStr ? ` · ${dateStr}` : ''}
                     </div>
-                    <span className="sy-pump" style={{ color: 'var(--turkis)', fontSize: 16, flexShrink: 0 }}>{r.total} €</span>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    {r.total > 0 && <span className="sy-pump" style={{ color: 'var(--turkis)', fontSize: 15 }}>{r.total} €</span>}
+                    <button onClick={() => deleteRoute(r.id)} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', fontSize: 16, padding: 4 }}>🗑</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
 
           {/* Settings */}
           <div style={{ ...glass, overflow: 'hidden', marginBottom: 14 }}>
@@ -498,7 +507,7 @@ export default function ProfilePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
               <IconBell size={16} style={{ color: 'var(--gruen)', width: 20 }}/>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>Benachrichtigungen</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{t.notifications}</div>
                 <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 1 }}>Grenzwarnungen & Tanktipps</div>
               </div>
               <Toggle on={notifOn} onToggle={toggleNotif}/>
@@ -507,7 +516,7 @@ export default function ProfilePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
               <IconStar size={16} style={{ color: 'var(--orange)', width: 20 }}/>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>Community-Meldungen</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{t.community}</div>
                 <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 1 }}>Neue Beiträge auf deiner Route</div>
               </div>
               <Toggle on={communityNotif} onToggle={toggleCommunityNotif}/>
@@ -519,8 +528,8 @@ export default function ProfilePage() {
               borderBottom: '1px solid rgba(255,255,255,0.04)',
             }}>
               <IconGlobe size={16} style={{ color: 'var(--e5)', width: 20 }}/>
-              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--fg)', fontFamily: 'var(--font-body)' }}>Sprache</span>
-              <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>{selectedLang}</span>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--fg)', fontFamily: 'var(--font-body)' }}>{t.language}</span>
+              <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>{LANGUAGES.find(([c]) => c === selectedLang)?.[1] || '🇩🇪 Deutsch'}</span>
               <IconChevron size={14} style={{ color: 'var(--fg-4)' }}/>
             </button>
             {/* Privacy */}
@@ -530,7 +539,7 @@ export default function ProfilePage() {
               borderBottom: '1px solid rgba(255,255,255,0.04)',
             }}>
               <IconShield size={16} style={{ color: 'var(--fg-3)', width: 20 }}/>
-              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--fg)', fontFamily: 'var(--font-body)' }}>Datenschutz</span>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--fg)', fontFamily: 'var(--font-body)' }}>{t.privacy}</span>
               <IconChevron size={14} style={{ color: 'var(--fg-4)' }}/>
             </button>
             {/* Sign out */}
@@ -540,11 +549,11 @@ export default function ProfilePage() {
                 padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
               }}>
                 <span style={{ width: 20 }}/>
-                <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--orange)', fontFamily: 'var(--font-body)' }}>Abmelden</span>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--orange)', fontFamily: 'var(--font-body)' }}>{t.logout}</span>
               </button>
             ) : (
               <div style={{ padding: '14px 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ flex: 1, fontSize: 13, color: 'var(--fg-3)' }}>Wirklich abmelden?</span>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--fg-3)' }}>{t.logoutConfirm}</span>
                 <button onClick={handleSignOut} style={{ padding: '7px 14px', borderRadius: 10, background: 'var(--orange)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Ja</button>
                 <button onClick={() => setShowSignOutConfirm(false)} style={{ padding: '7px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--fg)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Nein</button>
               </div>
@@ -626,24 +635,21 @@ export default function ProfilePage() {
       )}
 
       {modal === 'language' && (
-        <Modal title="Sprache wählen" onClose={() => setModal(null)}>
+        <Modal title={t.language} onClose={() => setModal(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {LANGUAGES.map(lang => (
-              <button key={lang} onClick={() => selectLang(lang)} style={{
+            {LANGUAGES.map(([code, label]) => (
+              <button key={code} onClick={() => selectLang(code)} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
-                background: selectedLang === lang ? 'rgba(245,181,68,0.12)' : 'rgba(255,255,255,0.04)',
-                border: selectedLang === lang ? '1px solid rgba(245,181,68,0.35)' : '1px solid rgba(255,255,255,0.08)',
-                color: selectedLang === lang ? 'var(--turkis)' : 'var(--fg)',
+                background: selectedLang === code ? 'rgba(245,181,68,0.12)' : 'rgba(255,255,255,0.04)',
+                border: selectedLang === code ? '1px solid rgba(245,181,68,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                color: selectedLang === code ? 'var(--turkis)' : 'var(--fg)',
                 fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)', textAlign: 'left',
               }}>
-                <span>{lang === 'Deutsch' ? '🇩🇪 Deutsch' : lang === 'Türkçe' ? '🇹🇷 Türkçe' : '🇬🇧 English'}</span>
-                {selectedLang === lang && <IconCheck size={16} style={{ color: 'var(--turkis)' }}/>}
+                <span>{label}</span>
+                {selectedLang === code && <IconCheck size={16} style={{ color: 'var(--turkis)' }}/>}
               </button>
             ))}
-          </div>
-          <div style={{ marginTop: 12, color: 'var(--fg-3)', fontSize: 11, textAlign: 'center' }}>
-            Mehrsprachigkeit folgt in einem Update · Çok dilli destek yakında
           </div>
         </Modal>
       )}
