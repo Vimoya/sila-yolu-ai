@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { auth } from '../firebase/config'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from 'firebase/auth'
 import { useStore } from '../store/useStore'
 import { AnimatedRouteMini } from '../components/RouteAnimation'
 import { IconMail, IconLock, IconUser, IconArrow, IconGoogle, IconCheck } from '../components/Icons'
@@ -67,6 +67,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -77,9 +78,11 @@ export default function LoginPage() {
     setError(''); setSuccess(''); setLoading(true)
     try {
       if (mode === 'login') {
-        await signInWithEmailAndPassword(auth, email, password)
+        await signInWithEmailAndPassword(auth, email.trim(), password)
       } else if (mode === 'register') {
-        await createUserWithEmailAndPassword(auth, email, password)
+        if (!name.trim()) { setError('Name eingeben'); setLoading(false); return }
+        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password)
+        await updateProfile(cred.user, { displayName: name.trim() })
       } else {
         await sendPasswordResetEmail(auth, email)
         setSuccess('Reset-E-Mail gesendet!')
@@ -152,6 +155,17 @@ export default function LoginPage() {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {mode === 'register' && (
+              <Field
+                icon={<IconUser size={16}/>} label="Name"
+                value={name} onChange={e => setName(e.target.value)}
+                placeholder="Dein Name"
+                focused={focusedField === 'name'}
+                onFocus={() => setFocusedField('name')}
+                onBlur={() => setFocusedField(null)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              />
+            )}
             <Field
               icon={<IconMail size={16}/>} label="E-Mail" type="email"
               value={email} onChange={e => setEmail(e.target.value)}
