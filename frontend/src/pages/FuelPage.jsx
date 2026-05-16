@@ -230,7 +230,8 @@ export default function FuelPage() {
 
   const fetchStations = useCallback(async (lat, lng, label) => {
     if (!user) return
-    if (cooldownLeft > 0) return
+    const remaining = fuelLastSearchAt ? Math.max(0, COOLDOWN_MS - (Date.now() - fuelLastSearchAt)) : 0
+    if (remaining > 0) return
     setLoading(true)
     setError(null)
     try {
@@ -258,7 +259,7 @@ export default function FuelPage() {
       setLoading(false)
       if (label) setLocationLabel(label)
     }
-  }, [user, cooldownLeft])
+  }, [user, fuelLastSearchAt])
 
   const getGPS = useCallback(() => {
     if (!navigator.geolocation) {
@@ -308,9 +309,9 @@ export default function FuelPage() {
   useEffect(() => {
     if (!user) return
     const left = fuelLastSearchAt ? Math.max(0, COOLDOWN_MS - (Date.now() - fuelLastSearchAt)) : 0
-    if (left > 0) return // show cached result, no new request
+    if (left > 0) return
     if (!fuelLastSearch) getGPS()
-  }, [])
+  }, [user])
 
   // Search suggestions via Nominatim
   useEffect(() => {
